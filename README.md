@@ -79,23 +79,6 @@ The application expects JSON data in this format:
 - Configurable polling intervals
 - Customizable UI colors and branding
 
-## Deployment Options
-
-### Option 1: Azure App Service (Recommended)
-- Deploy to existing Azure App Service Plan (€0 additional cost)
-- Single container with both frontend and backend
-- Subdomain or path-based routing
-
-### Option 2: Static Site + Azure Functions
-- Frontend as static site on Azure Storage Account
-- Backend as Azure Functions for API
-- Cost: €1-20/month
-
-### Option 3: Container Apps
-- Serverless container hosting
-- Auto-scale to zero
-- Cost: €15-50/month
-
 ## Getting Started
 
 ### Prerequisites
@@ -124,14 +107,66 @@ npm start
 ./scripts/deploy.sh
 ```
 
-## Future Migration
+## Deployment
 
-This standalone application is designed for easy extraction to a separate repository:
-- Self-contained dependencies
-- Minimal external references
-- Documented configuration
-- Standard deployment patterns
-- No shared code with parent project
+### GitHub Actions CI/CD Pipeline
+
+This project includes automated CI/CD pipeline that builds, tests, and deploys the application to Azure via DockerHub.
+
+#### Required GitHub Secrets
+
+To enable the deployment pipeline, configure these secrets in your GitHub repository (Settings > Secrets and variables > Actions):
+
+##### DockerHub Configuration
+- `DOCKERHUB_USERNAME` - Your DockerHub username
+- `DOCKERHUB_TOKEN` - DockerHub access token (recommended over password)
+  - Create at: https://hub.docker.com/settings/security
+
+##### Azure Configuration
+- `AZURE_WEBAPP_NAME` - Name of your Azure Web App
+- `AZURE_CREDENTIALS` - Azure service principal credentials in JSON format
+
+#### Setting up Azure Credentials
+
+1. Create a service principal with contributor role:
+```bash
+az ad sp create-for-rbac \
+  --name "orgchart-github-actions" \
+  --role contributor \
+  --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group-name} \
+  --sdk-auth
+```
+
+2. Copy the entire JSON output and paste it into the `AZURE_CREDENTIALS` secret.
+
+#### Pipeline Workflow
+
+The CI/CD pipeline triggers on:
+- Push to `main` or `develop` branches
+- Pull requests to `main` branch
+
+Pipeline stages:
+1. **Build & Test** - Compiles and tests both frontend and backend
+2. **Docker Build & Push** - Creates Docker image and pushes to DockerHub (main branch only)
+3. **Azure Deployment** - Deploys the application to Azure Web App (main branch only)
+
+#### Manual Deployment
+
+For manual deployment without GitHub Actions:
+
+```bash
+# Build Docker image
+docker build -t your-username/orgchart:latest .
+
+# Push to DockerHub
+docker push your-username/orgchart:latest
+
+# Deploy to Azure
+az webapp config container set \
+  --name your-webapp-name \
+  --resource-group your-resource-group \
+  --docker-custom-image-name your-username/orgchart:latest
+```
 
 ## License
 

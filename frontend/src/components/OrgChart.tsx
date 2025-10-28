@@ -12,7 +12,21 @@ const OrgChart: React.FC = () => {
   });
   const [positionRects, setPositionRects] = useState<PositionRect[]>([]);
   const [zoom, setZoom] = useState(1);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const toggleNode = (positionId: string) => {
+    setExpandedNodes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(positionId)) {
+        newSet.delete(positionId);
+      } else {
+        newSet.add(positionId);
+      }
+      return newSet;
+    });
+  };
 
   // Calculate correct level based on parent hierarchy
   const calculateLevels = (data: OrganizationData): OrganizationData => {
@@ -270,6 +284,111 @@ const OrgChart: React.FC = () => {
     return filteredPositions.filter((p) => p.parentPositionId === parentId);
   };
 
+  // Render compact mobile view
+  const renderCompactPosition = (position: Position, depth: number = 0): JSX.Element => {
+    const children = getChildren(position.id);
+    const isExpanded = expandedNodes.has(position.id);
+    const hasChildren = children.length > 0;
+
+    return (
+      <div key={position.id} className="mb-1">
+        <div
+          className={`bg-white rounded-lg shadow p-3 border-l-4 ${getLevelColor(position.level ?? 1)}`}
+          style={{ marginLeft: `${depth * 16}px` }}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {hasChildren && (
+                  <button
+                    onClick={() => toggleNode(position.id)}
+                    className="flex-shrink-0 p-0.5 hover:bg-gray-100 rounded transition-colors"
+                    aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                  >
+                    <svg
+                      className="w-4 h-4 text-gray-600 transition-transform"
+                      style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                )}
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold flex-shrink-0">
+                  {position.department}
+                </span>
+              </div>
+              <h3 className="font-bold text-gray-900 text-sm mb-0.5">
+                {position.url ? (
+                  <a
+                    href={position.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-indigo-600 transition-colors"
+                  >
+                    {position.title}
+                  </a>
+                ) : (
+                  position.title
+                )}
+              </h3>
+              <p className="text-xs text-gray-600 mb-2">{position.description}</p>
+              {position.employees && position.employees.length > 0 && (
+                <div className="space-y-1">
+                  {position.employees.map((emp) => (
+                    <div key={emp.id} className="flex items-center gap-2">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${
+                          emp.isPrimary
+                            ? 'bg-gradient-to-br from-pink-400 to-red-500'
+                            : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                        }`}
+                      >
+                        {getInitials(emp.name)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-gray-900 truncate">
+                          {emp.url ? (
+                            <a
+                              href={emp.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-indigo-600 transition-colors"
+                            >
+                              {emp.name}
+                            </a>
+                          ) : (
+                            emp.name
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">{emp.email}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {(position.employees?.length || 0) > 1 && (
+              <div className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {position.employees?.length}
+              </div>
+            )}
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div className="mt-1">
+            {children.map((child) => renderCompactPosition(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render position card
   const renderPositionCard = (position: Position): JSX.Element => {
     const children = getChildren(position.id);
@@ -279,9 +398,9 @@ const OrgChart: React.FC = () => {
         {/* Position card */}
         <div
           data-position-id={position.id}
-          className={`bg-white rounded-xl shadow-lg p-6 w-80 transition-all hover:shadow-2xl hover:-translate-y-1 ${getLevelColor(
+          className={`bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6 w-full max-w-[calc(100vw-2rem)] sm:max-w-sm md:w-80 transition-all hover:shadow-2xl hover:-translate-y-1 ${getLevelColor(
             position.level ?? 1
-          )} relative mb-20`}
+          )} relative mb-12 sm:mb-16 md:mb-20`}
         >
           {(position.employees?.length || 0) > 1 && (
             <div className="absolute top-3 right-3 bg-indigo-600 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold">
@@ -289,7 +408,7 @@ const OrgChart: React.FC = () => {
             </div>
           )}
 
-          <div className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold mb-3">
+          <div className="inline-block bg-blue-100 text-blue-700 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold mb-2 sm:mb-3">
             {position.department}
           </div>
 
@@ -298,12 +417,12 @@ const OrgChart: React.FC = () => {
               href={position.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-lg font-bold text-gray-900 mb-2 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
+              className="text-base sm:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2 hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
             >
               {position.title}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -317,15 +436,15 @@ const OrgChart: React.FC = () => {
               </svg>
             </a>
           ) : (
-            <h3 className="text-lg font-bold text-gray-900 mb-2">{position.title}</h3>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1.5 sm:mb-2">{position.title}</h3>
           )}
-          <p className="text-sm text-gray-600 mb-4 leading-relaxed">{position.description}</p>
+          <p className="text-sm text-gray-600 mb-3 sm:mb-4 leading-relaxed">{position.description}</p>
 
-          <div className="border-t border-gray-200 pt-4 space-y-2">
+          <div className="border-t border-gray-200 pt-3 sm:pt-4 space-y-1.5 sm:space-y-2">
             {(position.employees || []).map((emp) => (
-              <div key={emp.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+              <div key={emp.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-gray-50 transition-colors">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0 ${
                     emp.isPrimary
                       ? 'bg-gradient-to-br from-pink-400 to-red-500 shadow-md'
                       : 'bg-gradient-to-br from-indigo-500 to-purple-600'
@@ -339,7 +458,7 @@ const OrgChart: React.FC = () => {
                       href={emp.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm font-semibold text-gray-900 truncate hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
+                      className="text-xs sm:text-sm font-semibold text-gray-900 truncate hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
                     >
                       {emp.name}
                       <svg
@@ -358,7 +477,7 @@ const OrgChart: React.FC = () => {
                       </svg>
                     </a>
                   ) : (
-                    <div className="text-sm font-semibold text-gray-900 truncate">{emp.name}</div>
+                    <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{emp.name}</div>
                   )}
                   <div className="text-xs text-gray-500 truncate">{emp.email}</div>
                 </div>
@@ -369,7 +488,7 @@ const OrgChart: React.FC = () => {
 
         {/* Children */}
         {children.length > 0 && (
-          <div className="flex justify-center gap-12">{children.map((child) => renderPositionCard(child))}</div>
+          <div className="flex justify-center gap-4 sm:gap-8 md:gap-12 flex-wrap">{children.map((child) => renderPositionCard(child))}</div>
         )}
       </div>
     );
@@ -424,91 +543,147 @@ const OrgChart: React.FC = () => {
   return (
     <div className="h-screen bg-gradient-to-br from-indigo-500 to-purple-600 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">{orgData.name} - Organizational Chart</h1>
-        
-        {/* Controls */}
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2">
-            <label className="font-semibold text-gray-700">Department:</label>
-            <select
-              value={filters.department}
-              onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            >
-              <option value="all">All Departments</option>
-              {departments.sort().map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="bg-white border-b border-gray-200 p-3 md:p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <h1 className="text-lg md:text-2xl font-bold text-gray-900">{orgData.name} - Organizational Chart</h1>
 
-          <div className="flex items-center gap-2">
-            <label className="font-semibold text-gray-700">Level:</label>
-            <select
-              value={filters.level}
-              onChange={(e) => setFilters({ ...filters, level: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg
+              className="w-6 h-6 text-gray-700"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              <option value="all">All Levels</option>
-              <option value="1">Up to Level 1 (Leadership)</option>
-              <option value="2">Up to Level 2 (Directors)</option>
-              <option value="3">Up to Level 3 (Managers)</option>
-              <option value="4">Up to Level 4 (Staff)</option>
-            </select>
+              {isMobileMenuOpen ? (
+                <path d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {/* Controls - hidden on mobile unless menu is open */}
+        <div className={`flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-4 md:items-center ${isMobileMenuOpen ? 'block' : 'hidden md:flex'}`}>
+          {/* Filter controls */}
+          <div className="flex flex-col sm:flex-row gap-3 md:contents">
+            <div className="flex items-center gap-2 flex-1 sm:flex-none">
+              <label className="font-semibold text-gray-700 text-sm whitespace-nowrap">Department:</label>
+              <select
+                value={filters.department}
+                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+                className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="all">All Departments</option>
+                {departments.sort().map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 flex-1 sm:flex-none">
+              <label className="font-semibold text-gray-700 text-sm whitespace-nowrap">Level:</label>
+              <select
+                value={filters.level}
+                onChange={(e) => setFilters({ ...filters, level: e.target.value })}
+                className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="all">All Levels</option>
+                <option value="1">Up to Level 1 (Leadership)</option>
+                <option value="2">Up to Level 2 (Directors)</option>
+                <option value="3">Up to Level 3 (Managers)</option>
+                <option value="4">Up to Level 4 (Staff)</option>
+              </select>
+            </div>
           </div>
 
           <button
             onClick={() => setFilters({ department: 'all', level: 'all' })}
-            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all hover:shadow-lg text-sm"
+            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-all hover:shadow-lg text-sm"
           >
             Reset Filters
           </button>
 
-          <div className="flex items-center gap-2 ml-4">
-            <label className="font-semibold text-gray-700">Zoom:</label>
-            <button
-              onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
-              className="px-3 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-all text-sm"
-              disabled={zoom <= 0.5}
-            >
-              −
-            </button>
-            <span className="text-sm font-semibold text-gray-700 min-w-[50px] text-center">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              onClick={() => setZoom(Math.min(2, zoom + 0.1))}
-              className="px-3 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-all text-sm"
-              disabled={zoom >= 2}
-            >
-              +
-            </button>
-            <button
-              onClick={() => setZoom(1)}
-              className="px-3 py-2 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-all"
-            >
-              Reset
-            </button>
+          {/* Zoom controls */}
+          <div className="flex items-center gap-2 justify-between sm:justify-start md:ml-4">
+            <label className="font-semibold text-gray-700 text-sm">Zoom:</label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                className="px-3 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-all text-sm"
+                disabled={zoom <= 0.5}
+              >
+                −
+              </button>
+              <span className="text-sm font-semibold text-gray-700 min-w-[50px] text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => setZoom(Math.min(2, zoom + 0.1))}
+                className="px-3 py-2 bg-gray-200 text-gray-700 font-bold rounded-lg hover:bg-gray-300 transition-all text-sm"
+                disabled={zoom >= 2}
+              >
+                +
+              </button>
+              <button
+                onClick={() => setZoom(1)}
+                className="px-3 py-2 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200 transition-all"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
-          <div className="ml-auto flex gap-4">
-            <div className="text-center px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+          {/* Stats */}
+          <div className="flex gap-3 justify-center sm:justify-start md:ml-auto">
+            <div className="text-center px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg flex-1 sm:flex-none">
               <div className="text-xs text-gray-500 uppercase tracking-wide">Positions</div>
-              <div className="text-xl font-bold text-indigo-600">{filteredPositions.length}</div>
+              <div className="text-lg md:text-xl font-bold text-indigo-600">{filteredPositions.length}</div>
             </div>
-            <div className="text-center px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="text-center px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg flex-1 sm:flex-none">
               <div className="text-xs text-gray-500 uppercase tracking-wide">Employees</div>
-              <div className="text-xl font-bold text-indigo-600">{totalEmployees}</div>
+              <div className="text-lg md:text-xl font-bold text-indigo-600">{totalEmployees}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Orgchart - Scrollable with wide layout */}
-      <div className="flex-1 overflow-auto bg-gradient-to-b from-gray-50 to-white mb-8">
+      {/* Mobile compact view */}
+      <div className="md:hidden flex-1 overflow-auto bg-gradient-to-b from-gray-50 to-white">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-2 z-10 flex gap-2">
+          <button
+            onClick={() => {
+              const allIds = new Set(filteredPositions.map(p => p.id));
+              setExpandedNodes(allIds);
+            }}
+            className="flex-1 px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors"
+          >
+            Expand All
+          </button>
+          <button
+            onClick={() => setExpandedNodes(new Set())}
+            className="flex-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Collapse All
+          </button>
+        </div>
+        <div className="p-3 space-y-2">
+          {buildTree(filteredPositions).map((root) => renderCompactPosition(root))}
+        </div>
+      </div>
+
+      {/* Desktop graphical view */}
+      <div className="hidden md:block flex-1 overflow-auto bg-gradient-to-b from-gray-50 to-white mb-8">
         <div
           className="p-10 min-w-max relative origin-top-left transition-transform duration-200"
           ref={containerRef}
