@@ -1,0 +1,10 @@
+.App {
+  text-align: center;
+}
+
+/* Ensure full height layout */
+html, body, #root, .App {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}

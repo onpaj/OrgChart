@@ -1,0 +1,118 @@
+{
+  "organization": {
+    "name": "Sample Company",
+    "positions": [
+      {
+        "id": "ceo-001",
+        "title": "Chief Executive Officer",
+        "description": "Overall leadership and strategic direction of the company",
+        "department": "Executive",
+        "parentPositionId": null,
+        "level": 1,
+        "url": "https://example.com/positions/ceo",
+        "employees": [
+          {
+            "id": "emp-001",
+            "name": "John Smith",
+            "email": "john.smith@company.com",
+            "startDate": "2020-01-15",
+            "isPrimary": true,
+            "url": "https://example.com/employees/john-smith"
+          }
+        ]
+      },
+      {
+        "id": "cto-001",
+        "title": "Chief Technology Officer",
+        "description": "Technology strategy and engineering leadership",
+        "department": "Technology",
+        "parentPositionId": "ceo-001",
+        "level": 2,
+        "employees": [
+          {
+            "id": "emp-002",
+            "name": "Sarah Johnson",
+            "email": "sarah.johnson@company.com",
+            "startDate": "2020-03-01",
+            "isPrimary": true
+          }
+        ]
+      },
+      {
+        "id": "dev-lead-001",
+        "title": "Development Team Lead",
+        "description": "Leading the development team and technical implementation",
+        "department": "Technology",
+        "parentPositionId": "cto-001",
+        "level": 3,
+        "employees": [
+          {
+            "id": "emp-003",
+            "name": "Mike Chen",
+            "email": "mike.chen@company.com",
+            "startDate": "2021-01-15",
+            "isPrimary": true
+          }
+        ]
+      },
+      {
+        "id": "senior-dev-001",
+        "title": "Senior Developer",
+        "description": "Senior software development and mentoring",
+        "department": "Technology", 
+        "parentPositionId": "dev-lead-001",
+        "level": 4,
+        "employees": [
+          {
+            "id": "emp-004",
+            "name": "Alice Brown",
+            "email": "alice.brown@company.com",
+            "startDate": "2021-06-01",
+            "isPrimary": true
+          },
+          {
+            "id": "emp-005",
+            "name": "Bob Wilson",
+            "email": "bob.wilson@company.com",
+            "startDate": "2021-08-15",
+            "isPrimary": false
+          }
+        ]
+      },
+      {
+        "id": "cfo-001",
+        "title": "Chief Financial Officer",
+        "description": "Financial strategy and operations",
+        "department": "Finance",
+        "parentPositionId": "ceo-001",
+        "level": 2,
+        "employees": [
+          {
+            "id": "emp-006",
+            "name": "Lisa Davis",
+            "email": "lisa.davis@company.com",
+            "startDate": "2020-05-01",
+            "isPrimary": true
+          }
+        ]
+      },
+      {
+        "id": "accountant-001",
+        "title": "Senior Accountant",
+        "description": "Financial reporting and analysis",
+        "department": "Finance",
+        "parentPositionId": "cfo-001",
+        "level": 3,
+        "employees": [
+          {
+            "id": "emp-007",
+            "name": "Tom Garcia",
+            "email": "tom.garcia@company.com",
+            "startDate": "2021-02-01",
+            "isPrimary": true
+          }
+        ]
+      }
+    ]
+  }
+}
