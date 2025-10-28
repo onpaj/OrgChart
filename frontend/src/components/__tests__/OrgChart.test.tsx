@@ -152,10 +152,11 @@ describe('OrgChart Component', () => {
     render(<OrgChart />, { wrapper });
 
     expect(screen.getByText('Test Company - Organizational Chart')).toBeInTheDocument();
-    expect(screen.getByText('CEO')).toBeInTheDocument();
-    expect(screen.getByText('CTO')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    // Using getAllByText since responsive design renders both mobile and desktop views
+    expect(screen.getAllByText('CEO').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('CTO').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Jane Smith').length).toBeGreaterThan(0);
   });
 
   test('should filter by department', async () => {
@@ -187,9 +188,9 @@ describe('OrgChart Component', () => {
     fireEvent.change(departmentSelect, { target: { value: 'Technology' } });
 
     await waitFor(() => {
-      expect(screen.getByText('CTO')).toBeInTheDocument();
+      expect(screen.getAllByText('CTO').length).toBeGreaterThan(0);
       // CEO should still be visible as it's a parent of Technology department
-      expect(screen.getByText('CEO')).toBeInTheDocument();
+      expect(screen.getAllByText('CEO').length).toBeGreaterThan(0);
     });
   });
 
@@ -222,7 +223,7 @@ describe('OrgChart Component', () => {
     fireEvent.change(levelSelect, { target: { value: '1' } });
 
     await waitFor(() => {
-      expect(screen.getByText('CEO')).toBeInTheDocument();
+      expect(screen.getAllByText('CEO').length).toBeGreaterThan(0);
     });
 
     // Note: CTO might still be visible due to the level calculation logic

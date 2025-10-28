@@ -345,22 +345,19 @@ const OrgChart: React.FC = () => {
               {position.employees && position.employees.length > 0 && (
                 <div className="space-y-0.5 mt-1">
                   {position.employees.map((emp) => (
-                    <div key={emp.id} className="flex items-center">
-                      <div className="text-xs font-medium text-gray-900 truncate leading-tight">
-                        {emp.isPrimary && <span className="text-pink-600 mr-1">★</span>}
-                        {emp.url ? (
-                          <a
-                            href={emp.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-indigo-600 transition-colors"
-                          >
-                            {emp.name}
-                          </a>
-                        ) : (
-                          emp.name
-                        )}
-                      </div>
+                    <div key={emp.id} className="text-xs font-medium text-gray-900 truncate leading-tight">
+                      {emp.url ? (
+                        <a
+                          href={emp.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-indigo-600 transition-colors"
+                        >
+                          {emp.name}
+                        </a>
+                      ) : (
+                        emp.name
+                      )}
                     </div>
                   ))}
                 </div>
