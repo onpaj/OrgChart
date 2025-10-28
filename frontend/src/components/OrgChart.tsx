@@ -293,12 +293,12 @@ const OrgChart: React.FC = () => {
     return (
       <div key={position.id} className="mb-1">
         <div
-          className={`bg-white rounded-lg shadow p-3 border-l-4 ${getLevelColor(position.level ?? 1)}`}
-          style={{ marginLeft: `${depth * 16}px` }}
+          className={`bg-white rounded-md shadow-sm p-2 border-l-2 ${getLevelColor(position.level ?? 1)}`}
+          style={{ marginLeft: `${depth * 12}px` }}
         >
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 {hasChildren && (
                   <button
                     onClick={() => toggleNode(position.id)}
@@ -306,7 +306,7 @@ const OrgChart: React.FC = () => {
                     aria-label={isExpanded ? 'Collapse' : 'Expand'}
                   >
                     <svg
-                      className="w-4 h-4 text-gray-600 transition-transform"
+                      className="w-3.5 h-3.5 text-gray-600 transition-transform"
                       style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
                       fill="none"
                       strokeLinecap="round"
@@ -319,11 +319,16 @@ const OrgChart: React.FC = () => {
                     </svg>
                   </button>
                 )}
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold flex-shrink-0">
+                <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium flex-shrink-0">
                   {position.department}
                 </span>
+                {(position.employees?.length || 0) > 1 && (
+                  <div className="bg-indigo-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {position.employees?.length}
+                  </div>
+                )}
               </div>
-              <h3 className="font-bold text-gray-900 text-sm mb-0.5">
+              <h3 className="font-bold text-gray-900 text-sm leading-tight mb-0.5">
                 {position.url ? (
                   <a
                     href={position.url}
@@ -337,51 +342,34 @@ const OrgChart: React.FC = () => {
                   position.title
                 )}
               </h3>
-              <p className="text-xs text-gray-600 mb-2">{position.description}</p>
               {position.employees && position.employees.length > 0 && (
-                <div className="space-y-1">
+                <div className="space-y-0.5 mt-1">
                   {position.employees.map((emp) => (
-                    <div key={emp.id} className="flex items-center gap-2">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0 ${
-                          emp.isPrimary
-                            ? 'bg-gradient-to-br from-pink-400 to-red-500'
-                            : 'bg-gradient-to-br from-indigo-500 to-purple-600'
-                        }`}
-                      >
-                        {getInitials(emp.name)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-semibold text-gray-900 truncate">
-                          {emp.url ? (
-                            <a
-                              href={emp.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-indigo-600 transition-colors"
-                            >
-                              {emp.name}
-                            </a>
-                          ) : (
-                            emp.name
-                          )}
-                        </div>
-                        <div className="text-xs text-gray-500 truncate">{emp.email}</div>
+                    <div key={emp.id} className="flex items-center">
+                      <div className="text-xs font-medium text-gray-900 truncate leading-tight">
+                        {emp.isPrimary && <span className="text-pink-600 mr-1">★</span>}
+                        {emp.url ? (
+                          <a
+                            href={emp.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-indigo-600 transition-colors"
+                          >
+                            {emp.name}
+                          </a>
+                        ) : (
+                          emp.name
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            {(position.employees?.length || 0) > 1 && (
-              <div className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {position.employees?.length}
-              </div>
-            )}
           </div>
         </div>
         {hasChildren && isExpanded && (
-          <div className="mt-1">
+          <div className="mt-0.5">
             {children.map((child) => renderCompactPosition(child, depth + 1))}
           </div>
         )}
