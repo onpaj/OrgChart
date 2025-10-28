@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
+using OrgChart.API.DataSources;
 using OrgChart.API.Services;
 using System.Net;
 
@@ -34,6 +35,7 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
             var testConfig = new Dictionary<string, string?>
             {
                 ["Authentication:Enabled"] = "false",
+                ["OrgChart:DataSourceType"] = "Url",
                 ["OrgChart:DataSourceUrl"] = "https://test.example.com/orgchart"
             };
 
@@ -74,9 +76,12 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
                     services.Remove(descriptor);
                 }
 
-                // Add HttpClient with mock handler
-                services.AddHttpClient<IOrgChartService, OrgChartService>()
+                // Add HttpClient with mock handler for the data source
+                services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>()
                     .ConfigurePrimaryHttpMessageHandler(() => _mockHttpMessageHandler.Object);
+                
+                // Add the service
+                services.AddScoped<IOrgChartService, OrgChartService>();
             }
 
             // Reduce logging noise in tests

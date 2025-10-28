@@ -1,26 +1,22 @@
-using System.Text.Json;
-using Microsoft.Extensions.Options;
-using OrgChart.API.Configuration;
+using OrgChart.API.DataSources;
+using OrgChart.API.Exceptions;
 using OrgChart.API.Models;
 
 namespace OrgChart.API.Services;
 
 /// <summary>
-/// Service for retrieving organizational chart data from external source
+/// Service for retrieving organizational chart data from configured data source
 /// </summary>
 public class OrgChartService : IOrgChartService
 {
-    private readonly HttpClient _httpClient;
-    private readonly OrgChartOptions _options;
+    private readonly IOrgChartDataSource _dataSource;
     private readonly ILogger<OrgChartService> _logger;
 
     public OrgChartService(
-        HttpClient httpClient,
-        IOptions<OrgChartOptions> options,
+        IOrgChartDataSource dataSource,
         ILogger<OrgChartService> logger)
     {
-        _httpClient = httpClient;
-        _options = options.Value;
+        _dataSource = dataSource;
         _logger = logger;
     }
 
@@ -29,25 +25,9 @@ public class OrgChartService : IOrgChartService
     {
         try
         {
-            _logger.LogInformation("Fetching organizational structure from {Url}", _options.DataSourceUrl);
+            _logger.LogInformation("Retrieving organizational structure from data source");
 
-            var response = await _httpClient.GetAsync(_options.DataSourceUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            var orgChart = JsonSerializer.Deserialize<OrgChartResponse>(content, options);
-
-            if (orgChart == null)
-            {
-                _logger.LogError("Failed to deserialize organizational structure from {Url}", _options.DataSourceUrl);
-                throw new InvalidOperationException("Failed to deserialize organizational structure");
-            }
+            var orgChart = await _dataSource.GetDataAsync(cancellationToken);
 
             _logger.LogInformation(
                 "Successfully loaded organizational structure: {PositionCount} positions, {EmployeeCount} employees",
@@ -56,19 +36,14 @@ public class OrgChartService : IOrgChartService
 
             return orgChart;
         }
-        catch (HttpRequestException ex)
+        catch (DataSourceException ex)
         {
-            _logger.LogError(ex, "HTTP error while fetching organizational structure from {Url}", _options.DataSourceUrl);
-            throw new InvalidOperationException($"Failed to fetch organizational structure: {ex.Message}", ex);
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "JSON deserialization error for organizational structure from {Url}", _options.DataSourceUrl);
-            throw new InvalidOperationException($"Failed to parse organizational structure: {ex.Message}", ex);
+            _logger.LogError(ex, "Data source error while retrieving organizational structure");
+            throw new InvalidOperationException($"Failed to retrieve organizational structure: {ex.Message}", ex);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error while fetching organizational structure from {Url}", _options.DataSourceUrl);
+            _logger.LogError(ex, "Unexpected error while retrieving organizational structure");
             throw;
         }
     }

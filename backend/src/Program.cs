@@ -1,5 +1,6 @@
 using OrgChart.API.Services;
 using OrgChart.API.Configuration;
+using OrgChart.API.DataSources;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,8 +13,27 @@ builder.Services.AddSwaggerGen();
 builder.Services.Configure<OrgChartOptions>(
     builder.Configuration.GetSection(OrgChartOptions.SectionName));
 
-// Add HTTP client for external data fetching
-builder.Services.AddHttpClient<IOrgChartService, OrgChartService>();
+// Register data source based on configuration
+var dataSourceType = builder.Configuration.GetValue<string>("OrgChart:DataSourceType") ?? "Url";
+switch (dataSourceType.ToLower())
+{
+    case "url":
+        builder.Services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>();
+        break;
+    // Add more cases for future data sources:
+    // case "database":
+    //     builder.Services.AddScoped<IOrgChartDataSource, DatabaseDataSource>();
+    //     break;
+    // case "filesystem":
+    //     builder.Services.AddScoped<IOrgChartDataSource, FileSystemDataSource>();
+    //     break;
+    default:
+        builder.Services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>();
+        break;
+}
+
+// Register the service
+builder.Services.AddScoped<IOrgChartService, OrgChartService>();
 
 // Configure CORS
 builder.Services.AddCors(options =>
