@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     outputs:
-      version: ${{ steps.gitversion.outputs.semVer }}
+      version: ${{ steps.set-output.outputs.version }}
       image-tag: ${{ steps.set-output.outputs.image-tag }}
     
     steps:
@@ -82,9 +82,8 @@ jobs:
       run: |
         echo "GitVersion output: ${{ steps.gitversion.outputs.semVer }}"
         echo "Docker image env: ${{ env.DOCKER_IMAGE }}"
-        IMAGE_TAG="${{ env.DOCKER_IMAGE }}:${{ steps.gitversion.outputs.semVer }}"
-        echo "Final image tag: $IMAGE_TAG"
-        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "version=${{ steps.gitversion.outputs.semVer }}" >> $GITHUB_OUTPUT
+        echo "image-tag=${{ env.DOCKER_IMAGE }}:${{ steps.gitversion.outputs.semVer }}" >> $GITHUB_OUTPUT
       
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -108,6 +107,7 @@ jobs:
           org.opencontainers.image.revision=${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        
 
   deploy-azure:
     needs: [build-and-test, docker-build-push]
@@ -132,9 +132,6 @@ jobs:
         echo "Resource Group: ${{ steps.webapp-info.outputs.resource-group }}"
         echo "Image Tag from needs: '${{ needs.docker-build-push.outputs.image-tag }}'"
         echo "Version from needs: '${{ needs.docker-build-push.outputs.version }}'"
-        echo "Docker image env: '${{ env.DOCKER_IMAGE }}'"
-        echo "All outputs from docker-build-push job:"
-        echo "${{ toJSON(needs.docker-build-push.outputs) }}"
         
     - name: Update Web App container settings
       run: |
