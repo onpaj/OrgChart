@@ -668,7 +668,7 @@ const OrgChart: React.FC = () => {
       </div>
 
       {/* Desktop graphical view */}
-      <div className="hidden md:block flex-1 overflow-auto bg-gradient-to-b from-gray-50 to-white mb-8">
+      <div className="hidden md:block flex-1 overflow-auto bg-gradient-to-b from-gray-50 to-white">
         <div
           className="p-10 min-w-max relative origin-top-left transition-transform duration-200"
           ref={containerRef}

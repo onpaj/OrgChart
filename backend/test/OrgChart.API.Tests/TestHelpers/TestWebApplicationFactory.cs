@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using OrgChart.API.DataSources;
+using OrgChart.API.Repositories;
 using OrgChart.API.Services;
 using System.Net;
 
@@ -36,7 +37,10 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
             {
                 ["Authentication:Enabled"] = "false",
                 ["OrgChart:DataSourceType"] = "Url",
-                ["OrgChart:DataSourceUrl"] = "https://test.example.com/orgchart"
+                ["OrgChart:DataSourceUrl"] = "https://test.example.com/orgchart",
+                ["OrgChart:Permissions:InsertEnabled"] = "false",
+                ["OrgChart:Permissions:UpdateEnabled"] = "false",
+                ["OrgChart:Permissions:DeleteEnabled"] = "false"
             };
 
             // Merge with provided configuration
@@ -80,7 +84,8 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
                 services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>()
                     .ConfigurePrimaryHttpMessageHandler(() => _mockHttpMessageHandler.Object);
                 
-                // Add the service
+                // Add the repository and service
+                services.AddScoped<IOrgChartRepository, UrlBasedRepository>();
                 services.AddScoped<IOrgChartService, OrgChartService>();
             }
 

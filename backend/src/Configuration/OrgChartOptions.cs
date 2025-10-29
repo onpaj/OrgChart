@@ -29,4 +29,30 @@ public class OrgChartOptions
     /// File path for file system data source (used by FileSystemDataSource)
     /// </summary>
     public string? FilePath { get; set; }
+
+    /// <summary>
+    /// Repository permissions configuration
+    /// </summary>
+    public RepositoryPermissions Permissions { get; set; } = new();
+}
+
+/// <summary>
+/// Configuration for repository operation permissions
+/// </summary>
+public class RepositoryPermissions
+{
+    /// <summary>
+    /// Whether insert operations are enabled (creating new positions/employees)
+    /// </summary>
+    public bool InsertEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether update operations are enabled (modifying existing positions/employees)
+    /// </summary>
+    public bool UpdateEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Whether delete operations are enabled (removing positions/employees)
+    /// </summary>
+    public bool DeleteEnabled { get; set; } = false;
 }

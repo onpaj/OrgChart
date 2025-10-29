@@ -1,6 +1,7 @@
 using OrgChart.API.Services;
 using OrgChart.API.Configuration;
 using OrgChart.API.DataSources;
+using OrgChart.API.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,22 +14,29 @@ builder.Services.AddSwaggerGen();
 builder.Services.Configure<OrgChartOptions>(
     builder.Configuration.GetSection(OrgChartOptions.SectionName));
 
-// Register data source based on configuration
+// Register data source and repository based on configuration
 var dataSourceType = builder.Configuration.GetValue<string>("OrgChart:DataSourceType") ?? "Url";
 switch (dataSourceType.ToLower())
 {
     case "url":
+        // Register data source
         builder.Services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>();
+        // Register repository
+        builder.Services.AddScoped<IOrgChartRepository, UrlBasedRepository>();
         break;
-    // Add more cases for future data sources:
+    // Add more cases for future data sources and repositories:
     // case "database":
-    //     builder.Services.AddScoped<IOrgChartDataSource, DatabaseDataSource>();
+    //     builder.Services.AddScoped<DatabaseDataSource>();
+    //     builder.Services.AddScoped<IOrgChartRepository, DatabaseRepository>();
     //     break;
     // case "filesystem":
-    //     builder.Services.AddScoped<IOrgChartDataSource, FileSystemDataSource>();
+    //     builder.Services.AddScoped<FileSystemDataSource>();
+    //     builder.Services.AddScoped<IOrgChartRepository, FileSystemRepository>();
     //     break;
     default:
+        // Default to URL-based
         builder.Services.AddHttpClient<IOrgChartDataSource, UrlBasedDataSource>();
+        builder.Services.AddScoped<IOrgChartRepository, UrlBasedRepository>();
         break;
 }
 

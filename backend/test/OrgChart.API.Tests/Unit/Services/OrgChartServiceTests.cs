@@ -1,36 +1,40 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using OrgChart.API.DataSources;
 using OrgChart.API.Exceptions;
 using OrgChart.API.Models;
+using OrgChart.API.Repositories;
 using OrgChart.API.Services;
 
 namespace OrgChart.API.Tests.Unit.Services;
 
 public class OrgChartServiceTests
 {
-    private readonly Mock<IOrgChartDataSource> _mockDataSource;
+    private readonly Mock<IOrgChartRepository> _mockRepository;
     private readonly Mock<ILogger<OrgChartService>> _mockLogger;
     private readonly OrgChartService _service;
 
     public OrgChartServiceTests()
     {
-        _mockDataSource = new Mock<IOrgChartDataSource>();
+        _mockRepository = new Mock<IOrgChartRepository>();
         _mockLogger = new Mock<ILogger<OrgChartService>>();
         
-        _service = new OrgChartService(_mockDataSource.Object, _mockLogger.Object);
+        _service = new OrgChartService(_mockRepository.Object, _mockLogger.Object);
     }
 
     [Fact]
-    public async Task GetOrganizationStructureAsync_WhenDataSourceSucceeds_ShouldReturnData()
+    public async Task GetOrganizationStructureAsync_WhenRepositorySucceeds_ShouldReturnData()
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
         
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(It.IsAny<CancellationToken>()))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
+        
+        _mockRepository.Setup(r => r.InsertEnabled).Returns(false);
+        _mockRepository.Setup(r => r.UpdateEnabled).Returns(false);
+        _mockRepository.Setup(r => r.DeleteEnabled).Returns(false);
 
         // Act
         var result = await _service.GetOrganizationStructureAsync();
@@ -38,19 +42,19 @@ public class OrgChartServiceTests
         // Assert
         result.Should().BeEquivalentTo(expectedResponse);
         
-        _mockDataSource.Verify(
-            ds => ds.GetDataAsync(It.IsAny<CancellationToken>()),
+        _mockRepository.Verify(
+            r => r.GetDataAsync(It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task GetOrganizationStructureAsync_WhenDataSourceFails_ShouldThrowInvalidOperationException()
+    public async Task GetOrganizationStructureAsync_WhenRepositoryFails_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var dataSourceException = new DataSourceException("Data source error", new Exception("Inner error"));
+        var dataSourceException = new DataSourceException("Repository error", new Exception("Inner error"));
 
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(It.IsAny<CancellationToken>()))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(dataSourceException);
 
         // Act & Assert
@@ -67,8 +71,8 @@ public class OrgChartServiceTests
         // Arrange
         var unexpectedException = new InvalidOperationException("Unexpected error");
         
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(It.IsAny<CancellationToken>()))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(unexpectedException);
 
         // Act & Assert
@@ -84,9 +88,13 @@ public class OrgChartServiceTests
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
         
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(It.IsAny<CancellationToken>()))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
+        
+        _mockRepository.Setup(r => r.InsertEnabled).Returns(true);
+        _mockRepository.Setup(r => r.UpdateEnabled).Returns(false);
+        _mockRepository.Setup(r => r.DeleteEnabled).Returns(true);
 
         // Act
         await _service.GetOrganizationStructureAsync();
@@ -96,7 +104,7 @@ public class OrgChartServiceTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Retrieving organizational structure from data source")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Retrieving organizational structure from repository")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -105,20 +113,24 @@ public class OrgChartServiceTests
             x => x.Log(
                 LogLevel.Information,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Successfully loaded organizational structure")),
+                It.Is<It.IsAnyType>((v, t) => 
+                    v.ToString()!.Contains("Successfully loaded organizational structure") &&
+                    v.ToString()!.Contains("Insert=True") &&
+                    v.ToString()!.Contains("Update=False") &&
+                    v.ToString()!.Contains("Delete=True")),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task GetOrganizationStructureAsync_WhenDataSourceExceptionOccurs_ShouldLogError()
+    public async Task GetOrganizationStructureAsync_WhenRepositoryExceptionOccurs_ShouldLogError()
     {
         // Arrange
-        var dataSourceException = new DataSourceException("Data source error");
+        var dataSourceException = new DataSourceException("Repository error");
         
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(It.IsAny<CancellationToken>()))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(dataSourceException);
 
         // Act & Assert
@@ -129,30 +141,34 @@ public class OrgChartServiceTests
             x => x.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Data source error while retrieving organizational structure")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Repository error while retrieving organizational structure")),
                 dataSourceException,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
     }
 
     [Fact]
-    public async Task GetOrganizationStructureAsync_WithCancellationToken_ShouldPassTokenToDataSource()
+    public async Task GetOrganizationStructureAsync_WithCancellationToken_ShouldPassTokenToRepository()
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
         using var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
         
-        _mockDataSource
-            .Setup(ds => ds.GetDataAsync(cancellationToken))
+        _mockRepository
+            .Setup(r => r.GetDataAsync(cancellationToken))
             .ReturnsAsync(expectedResponse);
+        
+        _mockRepository.Setup(r => r.InsertEnabled).Returns(false);
+        _mockRepository.Setup(r => r.UpdateEnabled).Returns(false);
+        _mockRepository.Setup(r => r.DeleteEnabled).Returns(false);
 
         // Act
         await _service.GetOrganizationStructureAsync(cancellationToken);
 
         // Assert
-        _mockDataSource.Verify(
-            ds => ds.GetDataAsync(cancellationToken),
+        _mockRepository.Verify(
+            r => r.GetDataAsync(cancellationToken),
             Times.Once);
     }
 
