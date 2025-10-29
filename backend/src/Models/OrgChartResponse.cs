@@ -9,4 +9,20 @@ public class OrgChartResponse
     /// The complete organizational structure
     /// </summary>
     public OrganizationData Organization { get; set; } = new();
+
+    /// <summary>
+    /// User permissions for organizational chart operations
+    /// </summary>
+    public UserPermissions Permissions { get; set; } = new();
+}
+
+/// <summary>
+/// User permissions for organizational chart operations
+/// </summary>
+public class UserPermissions
+{
+    /// <summary>
+    /// Whether the user can edit (create, update, delete) positions and employees
+    /// </summary>
+    public bool CanEdit { get; set; }
 }

@@ -49,6 +49,21 @@ public class OrgChartController : ControllerBase
         {
             _logger.LogInformation("Fetching organizational structure");
             var result = await _orgChartService.GetOrganizationStructureAsync(cancellationToken);
+
+            // Check if user has OrgChart_Write claim
+            var canEdit = false;
+            if (authEnabled && User.Identity?.IsAuthenticated == true)
+            {
+                canEdit = User.HasClaim(c => c.Type == "OrgChart_Write");
+            }
+            else if (!authEnabled)
+            {
+                // If authentication is disabled, allow editing
+                canEdit = true;
+            }
+
+            result.Permissions = new UserPermissions { CanEdit = canEdit };
+
             return Ok(result);
         }
         catch (Exception ex)

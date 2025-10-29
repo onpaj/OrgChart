@@ -26,11 +26,6 @@ public class Employee
     public string StartDate { get; set; } = string.Empty;
 
     /// <summary>
-    /// Indicates if this is the primary employee for the position
-    /// </summary>
-    public bool IsPrimary { get; set; }
-
-    /// <summary>
     /// Optional URL to employee profile (e.g., MS Entra profile)
     /// </summary>
     public string? Url { get; set; }

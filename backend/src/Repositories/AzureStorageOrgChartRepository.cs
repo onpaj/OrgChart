@@ -161,7 +161,6 @@ public class AzureStorageOrgChartRepository : IOrgChartRepository
             // Update the position properties
             existingPosition.Title = position.Title;
             existingPosition.Description = position.Description;
-            existingPosition.Level = position.Level;
             existingPosition.ParentPositionId = position.ParentPositionId;
             existingPosition.Department = position.Department;
             existingPosition.Url = position.Url;
@@ -277,7 +276,6 @@ public class AzureStorageOrgChartRepository : IOrgChartRepository
             existingEmployee.Name = employee.Name;
             existingEmployee.Email = employee.Email;
             existingEmployee.StartDate = employee.StartDate;
-            existingEmployee.IsPrimary = employee.IsPrimary;
             existingEmployee.Url = employee.Url;
 
             await SaveDataAsync(orgChart, cancellationToken);

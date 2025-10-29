@@ -58,7 +58,15 @@ public interface IOrgChartService
     /// <summary>
     /// Deletes an employee
     /// </summary>
-    /// <param name="id">Employee ID</param>
+    /// <param name="positionId">Position ID</param>
+    /// <param name="employeeId">Employee ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    Task DeleteEmployeeAsync(string id, CancellationToken cancellationToken = default);
+    Task DeleteEmployeeAsync(string positionId, string employeeId, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Deletes an employee by finding their position automatically
+    /// </summary>
+    /// <param name="employeeId">Employee ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task DeleteEmployeeAsync(string employeeId, CancellationToken cancellationToken = default);
 }

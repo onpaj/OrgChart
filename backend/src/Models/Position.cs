@@ -21,11 +21,6 @@ public class Position
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Hierarchical level (1 = top level, higher numbers = lower in hierarchy)
-    /// </summary>
-    public int? Level { get; set; }
-
-    /// <summary>
     /// ID of the parent position in the hierarchy
     /// </summary>
     public string? ParentPositionId { get; set; }

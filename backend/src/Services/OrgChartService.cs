@@ -58,23 +58,26 @@ public class OrgChartService : IOrgChartService
         {
             _logger.LogInformation("Creating new position: {Title}", request.Title);
             
+            if (!_repository.InsertEnabled)
+            {
+                throw new NotSupportedException("Insert operations are not enabled for this repository");
+            }
+            
             var position = new Position
             {
                 Id = Guid.NewGuid().ToString(),
                 Title = request.Title,
                 Description = request.Description,
-                Level = request.Level,
                 ParentPositionId = request.ParentPositionId,
                 Department = request.Department,
                 Url = request.Url,
                 Employees = new List<Employee>()
             };
 
-            // Note: Actual persistence would be implemented here
-            // For now, this is a placeholder implementation
-            _logger.LogInformation("Position created with ID: {PositionId}", position.Id);
+            var createdPosition = await _repository.CreatePositionAsync(position, cancellationToken);
+            _logger.LogInformation("Position created with ID: {PositionId}", createdPosition.Id);
             
-            return position;
+            return createdPosition;
         }
         catch (Exception ex)
         {
@@ -90,23 +93,26 @@ public class OrgChartService : IOrgChartService
         {
             _logger.LogInformation("Updating position: {PositionId}", id);
             
-            // Note: Actual retrieval and update would be implemented here
-            // For now, this is a placeholder implementation
+            if (!_repository.UpdateEnabled)
+            {
+                throw new NotSupportedException("Update operations are not enabled for this repository");
+            }
+            
             var position = new Position
             {
                 Id = id,
                 Title = request.Title,
                 Description = request.Description,
-                Level = request.Level,
                 ParentPositionId = request.ParentPositionId,
                 Department = request.Department,
                 Url = request.Url,
                 Employees = new List<Employee>()
             };
 
+            var updatedPosition = await _repository.UpdatePositionAsync(position, cancellationToken);
             _logger.LogInformation("Position updated: {PositionId}", id);
             
-            return position;
+            return updatedPosition;
         }
         catch (Exception ex)
         {
@@ -122,9 +128,12 @@ public class OrgChartService : IOrgChartService
         {
             _logger.LogInformation("Deleting position: {PositionId}", id);
             
-            // Note: Actual deletion would be implemented here
-            // For now, this is a placeholder implementation
+            if (!_repository.DeleteEnabled)
+            {
+                throw new NotSupportedException("Delete operations are not enabled for this repository");
+            }
             
+            await _repository.DeletePositionAsync(id, cancellationToken);
             _logger.LogInformation("Position deleted: {PositionId}", id);
         }
         catch (Exception ex)
@@ -141,21 +150,24 @@ public class OrgChartService : IOrgChartService
         {
             _logger.LogInformation("Creating new employee: {Name} in position {PositionId}", request.Name, request.PositionId);
             
+            if (!_repository.InsertEnabled)
+            {
+                throw new NotSupportedException("Insert operations are not enabled for this repository");
+            }
+            
             var employee = new Employee
             {
                 Id = Guid.NewGuid().ToString(),
                 Name = request.Name,
                 Email = request.Email,
                 StartDate = request.StartDate,
-                IsPrimary = request.IsPrimary,
                 Url = request.Url
             };
 
-            // Note: Actual persistence would be implemented here
-            // For now, this is a placeholder implementation
-            _logger.LogInformation("Employee created with ID: {EmployeeId}", employee.Id);
+            var createdEmployee = await _repository.CreateEmployeeAsync(request.PositionId, employee, cancellationToken);
+            _logger.LogInformation("Employee created with ID: {EmployeeId}", createdEmployee.Id);
             
-            return employee;
+            return createdEmployee;
         }
         catch (Exception ex)
         {
@@ -171,21 +183,24 @@ public class OrgChartService : IOrgChartService
         {
             _logger.LogInformation("Updating employee: {EmployeeId}", id);
             
-            // Note: Actual retrieval and update would be implemented here
-            // For now, this is a placeholder implementation
+            if (!_repository.UpdateEnabled)
+            {
+                throw new NotSupportedException("Update operations are not enabled for this repository");
+            }
+            
             var employee = new Employee
             {
                 Id = id,
                 Name = request.Name,
                 Email = request.Email,
                 StartDate = request.StartDate,
-                IsPrimary = request.IsPrimary,
                 Url = request.Url
             };
 
+            var updatedEmployee = await _repository.UpdateEmployeeAsync(request.PositionId, employee, cancellationToken);
             _logger.LogInformation("Employee updated: {EmployeeId}", id);
             
-            return employee;
+            return updatedEmployee;
         }
         catch (Exception ex)
         {
@@ -195,21 +210,63 @@ public class OrgChartService : IOrgChartService
     }
 
     /// <inheritdoc />
-    public async Task DeleteEmployeeAsync(string id, CancellationToken cancellationToken = default)
+    public async Task DeleteEmployeeAsync(string positionId, string employeeId, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Deleting employee: {EmployeeId}", id);
+            _logger.LogInformation("Deleting employee: {EmployeeId} from position: {PositionId}", employeeId, positionId);
             
-            // Note: Actual deletion would be implemented here
-            // For now, this is a placeholder implementation
+            if (!_repository.DeleteEnabled)
+            {
+                throw new NotSupportedException("Delete operations are not enabled for this repository");
+            }
             
-            _logger.LogInformation("Employee deleted: {EmployeeId}", id);
+            await _repository.DeleteEmployeeAsync(positionId, employeeId, cancellationToken);
+            _logger.LogInformation("Employee deleted: {EmployeeId}", employeeId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting employee: {EmployeeId}", id);
+            _logger.LogError(ex, "Error deleting employee: {EmployeeId}", employeeId);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteEmployeeAsync(string employeeId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Finding position for employee: {EmployeeId}", employeeId);
+            var positionId = await FindPositionByEmployeeIdAsync(employeeId, cancellationToken);
+            
+            await DeleteEmployeeAsync(positionId, employeeId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting employee: {EmployeeId}", employeeId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Finds the position ID for a given employee ID
+    /// </summary>
+    /// <param name="employeeId">Employee ID to search for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Position ID containing the employee</returns>
+    /// <exception cref="InvalidOperationException">Thrown when employee is not found</exception>
+    private async Task<string> FindPositionByEmployeeIdAsync(string employeeId, CancellationToken cancellationToken = default)
+    {
+        var orgChart = await _repository.GetDataAsync(cancellationToken);
+        
+        foreach (var position in orgChart.Organization.Positions)
+        {
+            if (position.Employees.Any(e => e.Id == employeeId))
+            {
+                return position.Id;
+            }
+        }
+        
+        throw new InvalidOperationException($"Employee with ID {employeeId} not found in any position");
     }
 }

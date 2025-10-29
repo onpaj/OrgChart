@@ -2,6 +2,8 @@ using OrgChart.API.Services;
 using OrgChart.API.Configuration;
 using OrgChart.API.DataSources;
 using OrgChart.API.Repositories;
+using OrgChart.API.Authentication;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,21 +68,56 @@ builder.Services.AddCors(options =>
 var authEnabled = builder.Configuration.GetValue<bool>("Authentication:Enabled");
 if (authEnabled)
 {
-    builder.Services.AddAuthentication("Bearer")
-           .AddJwtBearer("Bearer", options =>
-           {
-               // Configure JWT Bearer authentication
-               options.Authority = builder.Configuration["Authentication:Authority"];
-               options.TokenValidationParameters.ValidateAudience = false;
-           });
-    
-    // Add authorization policies
-    builder.Services.AddAuthorization(options =>
+    if (builder.Environment.IsDevelopment())
     {
-        options.AddPolicy("OrgChartWritePolicy", policy =>
-            policy.RequireClaim("OrgChart_Write"));
-    });
+        // Development authentication with fake claims
+        builder.Services.AddAuthentication("Development")
+               .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>("Development", options => { })
+               .AddScheme<AuthenticationSchemeOptions, AzureAppServiceAuthenticationHandler>("AzureAppService", options => { })
+               .AddJwtBearer("Bearer", options =>
+               {
+                   options.Authority = builder.Configuration["Authentication:Authority"];
+                   options.TokenValidationParameters.ValidateAudience = false;
+               });
+    }
+    else
+    {
+        // Production authentication
+        builder.Services.AddAuthentication("AzureAppService")
+               .AddScheme<AuthenticationSchemeOptions, AzureAppServiceAuthenticationHandler>("AzureAppService", options => { })
+               .AddJwtBearer("Bearer", options =>
+               {
+                   options.Authority = builder.Configuration["Authentication:Authority"];
+                   options.TokenValidationParameters.ValidateAudience = false;
+               });
+    }
 }
+
+// Add authorization policies (always register, even if auth is disabled)
+builder.Services.AddAuthorization(options =>
+{
+    if (authEnabled)
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow all authenticated users to have write access
+            options.AddPolicy("OrgChartWritePolicy", policy =>
+                policy.RequireAuthenticatedUser());
+        }
+        else
+        {
+            // In production, require specific claim
+            options.AddPolicy("OrgChartWritePolicy", policy =>
+                policy.RequireClaim("OrgChart_Write"));
+        }
+    }
+    else
+    {
+        // When authentication is disabled, allow all requests
+        options.AddPolicy("OrgChartWritePolicy", policy =>
+            policy.RequireAssertion(context => true));
+    }
+});
 
 var app = builder.Build();
 
