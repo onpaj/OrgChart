@@ -36,7 +36,6 @@ public static class TestDataBuilder
                         Id = "pos1",
                         Title = "Manager",
                         Description = "Team Manager",
-                        Level = 1,
                         Department = "Management",
                         Employees = new List<Employee>
                         {
@@ -45,8 +44,7 @@ public static class TestDataBuilder
                                 Id = "emp1",
                                 Name = "Test Manager",
                                 Email = "manager@test.com",
-                                StartDate = "2020-01-01",
-                                IsPrimary = true
+                                StartDate = "2020-01-01"
                             }
                         }
                     }
@@ -74,7 +72,6 @@ public static class TestDataBuilder
             Id = "ceo-001",
             Title = "Chief Executive Officer",
             Description = "Leads the organization and sets strategic direction",
-            Level = 1,
             Department = "Executive",
             Employees = new List<Employee>
             {
@@ -84,7 +81,6 @@ public static class TestDataBuilder
                     Name = "John Smith",
                     Email = "john.smith@company.com",
                     StartDate = "2019-01-15",
-                    IsPrimary = true,
                     Url = "https://company.com/profiles/john-smith"
                 }
             },
@@ -99,7 +95,6 @@ public static class TestDataBuilder
             Id = "cto-001",
             Title = "Chief Technology Officer",
             Description = "Oversees technology strategy and development",
-            Level = 2,
             ParentPositionId = "ceo-001",
             Department = "Technology",
             Employees = new List<Employee>
@@ -110,7 +105,6 @@ public static class TestDataBuilder
                     Name = "Sarah Johnson",
                     Email = "sarah.johnson@company.com",
                     StartDate = "2020-03-01",
-                    IsPrimary = true,
                     Url = "https://company.com/profiles/sarah-johnson"
                 }
             },
@@ -125,7 +119,6 @@ public static class TestDataBuilder
             Id = "dev-001",
             Title = "Senior Software Developer",
             Description = "Develops and maintains software applications",
-            Level = 3,
             ParentPositionId = "cto-001",
             Department = "Technology",
             Employees = new List<Employee>
@@ -135,16 +128,14 @@ public static class TestDataBuilder
                     Id = "emp-dev-001",
                     Name = "Mike Davis",
                     Email = "mike.davis@company.com",
-                    StartDate = "2021-06-15",
-                    IsPrimary = true
+                    StartDate = "2021-06-15"
                 },
                 new Employee
                 {
                     Id = "emp-dev-002",
                     Name = "Lisa Wang",
                     Email = "lisa.wang@company.com",
-                    StartDate = "2022-02-01",
-                    IsPrimary = false
+                    StartDate = "2022-02-01"
                 }
             }
         };
@@ -160,8 +151,7 @@ public static class TestDataBuilder
                 Id = $"emp-{i:000}",
                 Name = $"Employee {i}",
                 Email = $"employee{i}@company.com",
-                StartDate = DateTime.Now.AddDays(-i * 30).ToString("yyyy-MM-dd"),
-                IsPrimary = i == 1
+                StartDate = DateTime.Now.AddDays(-i * 30).ToString("yyyy-MM-dd")
             });
         }
         return employees;
@@ -181,7 +171,6 @@ public static class TestDataBuilder
                     Id = $"pos-{positionId:000}",
                     Title = $"Position {positionId}",
                     Description = $"Description for position {positionId}",
-                    Level = level,
                     Department = $"Department {(positionId % 3) + 1}",
                     Employees = CreateEmployeeList(1)
                 };

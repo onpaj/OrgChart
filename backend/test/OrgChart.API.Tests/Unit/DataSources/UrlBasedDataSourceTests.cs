@@ -323,7 +323,6 @@ public class UrlBasedDataSourceTests
                         Id = "pos1",
                         Title = "CEO",
                         Description = "Chief Executive Officer",
-                        Level = 1,
                         Department = "Executive",
                         Employees = new List<Employee>
                         {
@@ -332,8 +331,7 @@ public class UrlBasedDataSourceTests
                                 Id = "emp1",
                                 Name = "John Doe",
                                 Email = "john.doe@company.com",
-                                StartDate = "2020-01-01",
-                                IsPrimary = true
+                                StartDate = "2020-01-01"
                             }
                         }
                     },
@@ -342,7 +340,6 @@ public class UrlBasedDataSourceTests
                         Id = "pos2",
                         Title = "CTO",
                         Description = "Chief Technology Officer",
-                        Level = 2,
                         ParentPositionId = "pos1",
                         Department = "Technology",
                         Employees = new List<Employee>
@@ -352,8 +349,7 @@ public class UrlBasedDataSourceTests
                                 Id = "emp2",
                                 Name = "Jane Smith",
                                 Email = "jane.smith@company.com",
-                                StartDate = "2020-06-01",
-                                IsPrimary = true
+                                StartDate = "2020-06-01"
                             }
                         }
                     }

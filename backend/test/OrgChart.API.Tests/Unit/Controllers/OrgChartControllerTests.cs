@@ -204,7 +204,6 @@ public class OrgChartControllerTests
                         Id = "pos1",
                         Title = "CEO",
                         Description = "Chief Executive Officer",
-                        Level = 1,
                         Department = "Executive",
                         Employees = new List<Employee>
                         {
@@ -213,8 +212,7 @@ public class OrgChartControllerTests
                                 Id = "emp1",
                                 Name = "John Doe",
                                 Email = "john.doe@company.com",
-                                StartDate = "2020-01-01",
-                                IsPrimary = true
+                                StartDate = "2020-01-01"
                             }
                         }
                     }

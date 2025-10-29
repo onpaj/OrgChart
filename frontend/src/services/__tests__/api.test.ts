@@ -4,6 +4,11 @@ import { OrgChartResponse } from '../../types/orgchart';
 // Mock fetch
 global.fetch = jest.fn();
 
+// Mock the auth module
+jest.mock('../auth', () => ({
+  getAccessToken: jest.fn().mockResolvedValue(null),
+}));
+
 describe('OrgChartApi', () => {
   let api: OrgChartApi;
 
@@ -30,11 +35,13 @@ describe('OrgChartApi', () => {
                   name: 'John Doe',
                   email: 'john@example.com',
                   startDate: '2020-01-01',
-                  isPrimary: true,
                 },
               ],
             },
           ],
+        },
+        permissions: {
+          canEdit: false,
         },
       };
 
@@ -50,6 +57,7 @@ describe('OrgChartApi', () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       expect(result).toEqual(mockResponse);
@@ -70,12 +78,18 @@ describe('OrgChartApi', () => {
     test('should use correct API endpoint', async () => {
       (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce({ organization: { name: 'Test', positions: [] } }),
+        json: jest.fn().mockResolvedValueOnce({
+          organization: { name: 'Test', positions: [] },
+          permissions: { canEdit: false },
+        }),
       });
 
       await api.getOrganizationStructure();
 
-      expect(fetch).toHaveBeenCalledWith('/test-api/orgchart', expect.any(Object));
+      expect(fetch).toHaveBeenCalledWith('/test-api/orgchart', expect.objectContaining({
+        method: 'GET',
+        credentials: 'include',
+      }));
     });
 
     test('should handle network errors', async () => {

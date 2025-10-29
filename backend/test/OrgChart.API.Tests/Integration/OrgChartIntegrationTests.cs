@@ -98,41 +98,27 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
     public async Task Get_OrgChart_WhenExternalServiceFails_ReturnsInternalServerError()
     {
         // Arrange
-        var client = _factory.WithWebHostBuilder(builder =>
+        var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
+        
+        mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("External service unavailable"));
+
+        var configuration = new Dictionary<string, string?>
         {
-            builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Authentication:Enabled"] = "false",
-                    ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
-                });
-            });
+            ["Authentication:Enabled"] = "false",
+            ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
+        };
 
-            builder.ConfigureServices(services =>
-            {
-                var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-                
-                mockHttpMessageHandler
-                    .Protected()
-                    .Setup<Task<HttpResponseMessage>>(
-                        "SendAsync",
-                        ItExpr.IsAny<HttpRequestMessage>(),
-                        ItExpr.IsAny<CancellationToken>())
-                    .ThrowsAsync(new HttpRequestException("External service unavailable"));
+        var factory = new TestWebApplicationFactory<Program>(
+            mockHttpMessageHandler: mockHttpMessageHandler,
+            configuration: configuration);
 
-                services.AddSingleton(mockHttpMessageHandler.Object);
-                
-                var serviceDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(HttpClient));
-                if (serviceDescriptor != null)
-                {
-                    services.Remove(serviceDescriptor);
-                }
-
-                services.AddScoped<HttpClient>(provider => 
-                    new HttpClient(provider.GetRequiredService<HttpMessageHandler>()));
-            });
-        }).CreateClient();
+        var client = factory.CreateClient();
 
         // Act
         var response = await client.GetAsync("/api/orgchart");
@@ -247,7 +233,6 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
                         Id = "pos1",
                         Title = "CEO",
                         Description = "Chief Executive Officer",
-                        Level = 1,
                         Department = "Executive",
                         Employees = new List<Employee>
                         {
@@ -256,8 +241,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
                                 Id = "emp1",
                                 Name = "John Doe",
                                 Email = "john.doe@company.com",
-                                StartDate = "2020-01-01",
-                                IsPrimary = true
+                                StartDate = "2020-01-01"
                             }
                         }
                     },
@@ -266,7 +250,6 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
                         Id = "pos2",
                         Title = "CTO",
                         Description = "Chief Technology Officer",
-                        Level = 2,
                         ParentPositionId = "pos1",
                         Department = "Technology",
                         Employees = new List<Employee>
@@ -276,12 +259,15 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
                                 Id = "emp2",
                                 Name = "Jane Smith",
                                 Email = "jane.smith@company.com",
-                                StartDate = "2020-06-01",
-                                IsPrimary = true
+                                StartDate = "2020-06-01"
                             }
                         }
                     }
                 }
+            },
+            Permissions = new UserPermissions
+            {
+                CanEdit = true
             }
         };
     }
