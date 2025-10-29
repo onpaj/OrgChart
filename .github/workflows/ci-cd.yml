@@ -112,11 +112,25 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        images: ${{ needs.docker-build-push.outputs.image-tag }}
+    - name: Get Web App resource group
+      id: webapp-info
+      run: |
+        RG=$(az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --query resourceGroup -o tsv)
+        echo "resource-group=$RG" >> $GITHUB_OUTPUT
+        
+    - name: Update Web App container settings
+      run: |
+        az webapp config container set \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --resource-group ${{ steps.webapp-info.outputs.resource-group }} \
+          --docker-custom-image-name ${{ needs.docker-build-push.outputs.image-tag }} \
+          --docker-registry-server-url https://index.docker.io/v1/
+        
+    - name: Restart Web App to pull new image
+      run: |
+        az webapp restart \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --resource-group ${{ steps.webapp-info.outputs.resource-group }}
         
     - name: Azure logout
       run: az logout

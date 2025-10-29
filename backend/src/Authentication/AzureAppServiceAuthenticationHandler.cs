@@ -96,12 +96,55 @@ public class AzureAppServiceAuthenticationHandler : AuthenticationHandler<Authen
         }
     }
 
-    private Task<AuthenticateResult> ProcessAuthCookie()
+    private async Task<AuthenticateResult> ProcessAuthCookie()
     {
-        // For cookie-based authentication, we might need to make an internal call to /.auth/me
-        // This is a simplified approach - you might need to implement actual cookie validation
-        Logger.LogInformation("Cookie-based authentication detected but not fully implemented");
-        return Task.FromResult(AuthenticateResult.NoResult());
+        try
+        {
+            // Create HttpClient to call /.auth/me endpoint internally
+            using var httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri($"{Request.Scheme}://{Request.Host}");
+            
+            // Copy authentication cookies to the internal request
+            var authCookie = Request.Cookies["AppServiceAuthSession"];
+            if (!string.IsNullOrEmpty(authCookie))
+            {
+                httpClient.DefaultRequestHeaders.Add("Cookie", $"AppServiceAuthSession={authCookie}");
+            }
+
+            var response = await httpClient.GetAsync("/.auth/me");
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to call /.auth/me: {StatusCode}", response.StatusCode);
+                return AuthenticateResult.NoResult();
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            Logger.LogInformation("/.auth/me response: {Content}", content);
+
+            var authMeResponse = JsonSerializer.Deserialize<AuthMeResponse[]>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (authMeResponse?.Length > 0 && authMeResponse[0].ClientPrincipal != null)
+            {
+                var clientPrincipal = authMeResponse[0].ClientPrincipal;
+                var claims = CreateClaimsFromPrincipal(clientPrincipal);
+                var identity = new ClaimsIdentity(claims, Scheme.Name);
+                var principal = new ClaimsPrincipal(identity);
+                var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
+                Logger.LogInformation("Successfully authenticated via /.auth/me: {UserId}", clientPrincipal.UserId);
+                return AuthenticateResult.Success(ticket);
+            }
+
+            return AuthenticateResult.NoResult();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error calling /.auth/me");
+            return AuthenticateResult.NoResult();
+        }
     }
 
     private Task<AuthenticateResult> ProcessAlternativeHeaders(string? userPrincipal, string? userId)
@@ -178,4 +221,9 @@ public class ClientPrincipalClaim
 {
     public string Typ { get; set; } = string.Empty;
     public string Val { get; set; } = string.Empty;
+}
+
+public class AuthMeResponse
+{
+    public ClientPrincipal? ClientPrincipal { get; set; }
 }

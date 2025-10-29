@@ -100,13 +100,13 @@ builder.Services.AddAuthorization(options =>
     {
         if (builder.Environment.IsDevelopment())
         {
-            // In development, allow all authenticated users to have write access
+            // In development, allow all authenticated users to have write access for easier testing
             options.AddPolicy("OrgChartWritePolicy", policy =>
                 policy.RequireAuthenticatedUser());
         }
         else
         {
-            // In production, require specific claim
+            // In production, require specific OrgChart_Write claim
             options.AddPolicy("OrgChartWritePolicy", policy =>
                 policy.RequireClaim("OrgChart_Write"));
         }
