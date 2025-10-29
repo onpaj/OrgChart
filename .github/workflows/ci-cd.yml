@@ -112,10 +112,10 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
         
-    - name: Get Web App resource group
+    - name: Find Web App resource group
       id: webapp-info
       run: |
-        RG=$(az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --query resourceGroup -o tsv)
+        RG=$(az webapp list --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].resourceGroup" -o tsv)
         echo "resource-group=$RG" >> $GITHUB_OUTPUT
         
     - name: Update Web App container settings
