@@ -118,13 +118,27 @@ jobs:
         RG=$(az webapp list --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].resourceGroup" -o tsv)
         echo "resource-group=$RG" >> $GITHUB_OUTPUT
         
+    - name: Debug deployment info
+      run: |
+        echo "Resource Group: ${{ steps.webapp-info.outputs.resource-group }}"
+        echo "Image Tag: ${{ needs.docker-build-push.outputs.image-tag }}"
+        echo "Version: ${{ needs.docker-build-push.outputs.version }}"
+        
     - name: Update Web App container settings
       run: |
+        IMAGE_TAG="${{ needs.docker-build-push.outputs.image-tag }}"
+        if [ -z "$IMAGE_TAG" ]; then
+          echo "Error: Image tag is empty"
+          exit 1
+        fi
+        
         az webapp config container set \
-          --name ${{ env.AZURE_WEBAPP_NAME }} \
-          --resource-group ${{ steps.webapp-info.outputs.resource-group }} \
-          --docker-custom-image-name ${{ needs.docker-build-push.outputs.image-tag }} \
-          --docker-registry-server-url https://index.docker.io/v1/
+          --name "${{ env.AZURE_WEBAPP_NAME }}" \
+          --resource-group "${{ steps.webapp-info.outputs.resource-group }}" \
+          --docker-custom-image-name "$IMAGE_TAG" \
+          --docker-registry-server-url "https://index.docker.io" \
+          --docker-registry-server-user "${{ secrets.DOCKERHUB_USERNAME }}" \
+          --docker-registry-server-password "${{ secrets.DOCKERHUB_TOKEN }}"
         
     - name: Restart Web App to pull new image
       run: |
