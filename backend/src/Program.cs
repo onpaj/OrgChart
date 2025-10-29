@@ -24,6 +24,10 @@ switch (dataSourceType.ToLower())
         // Register repository
         builder.Services.AddScoped<IOrgChartRepository, UrlBasedRepository>();
         break;
+    case "azurestorage":
+        // Register Azure Storage repository (no data source needed as repository handles storage directly)
+        builder.Services.AddScoped<IOrgChartRepository, AzureStorageOrgChartRepository>();
+        break;
     // Add more cases for future data sources and repositories:
     // case "database":
     //     builder.Services.AddScoped<DatabaseDataSource>();
@@ -69,6 +73,13 @@ if (authEnabled)
                options.Authority = builder.Configuration["Authentication:Authority"];
                options.TokenValidationParameters.ValidateAudience = false;
            });
+    
+    // Add authorization policies
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("OrgChartWritePolicy", policy =>
+            policy.RequireClaim("OrgChart_Write"));
+    });
 }
 
 var app = builder.Build();

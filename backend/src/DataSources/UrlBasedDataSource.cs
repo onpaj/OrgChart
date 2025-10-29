@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using OrgChart.API.Configuration;
 using OrgChart.API.Exceptions;
 using OrgChart.API.Models;
+using Polly;
 
 namespace OrgChart.API.DataSources;
 
@@ -12,8 +13,9 @@ namespace OrgChart.API.DataSources;
 public class UrlBasedDataSource : IOrgChartDataSource
 {
     private readonly HttpClient _httpClient;
-    private readonly OrgChartOptions _options;
+    private readonly UrlStorageOptions _urlOptions;
     private readonly ILogger<UrlBasedDataSource> _logger;
+    private readonly ResiliencePipeline _resiliencePipeline;
 
     public UrlBasedDataSource(
         HttpClient httpClient,
@@ -21,21 +23,79 @@ public class UrlBasedDataSource : IOrgChartDataSource
         ILogger<UrlBasedDataSource> logger)
     {
         _httpClient = httpClient;
-        _options = options.Value;
+        var orgChartOptions = options.Value;
+        
+        // Support both new UrlStorage configuration and legacy DataSourceUrl for backward compatibility
+        _urlOptions = orgChartOptions.UrlStorage ?? new UrlStorageOptions 
+        { 
+            Url = orgChartOptions.DataSourceUrl 
+        };
+        
+        if (string.IsNullOrEmpty(_urlOptions.Url))
+        {
+            throw new ArgumentException("URL configuration is required. Set either UrlStorage.Url or DataSourceUrl (legacy).");
+        }
+        
         _logger = logger;
+        
+        // Configure HttpClient with timeout and static headers only
+        _httpClient.Timeout = TimeSpan.FromSeconds(_urlOptions.TimeoutSeconds);
+        
+        foreach (var header in _urlOptions.StaticHeaders)
+        {
+            _httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+        }
+
+        // Configure Polly resilience pipeline
+        _resiliencePipeline = new ResiliencePipelineBuilder()
+            .AddRetry(new Polly.Retry.RetryStrategyOptions
+            {
+                ShouldHandle = new PredicateBuilder().Handle<HttpRequestException>(),
+                MaxRetryAttempts = _urlOptions.RetryAttempts,
+                Delay = TimeSpan.FromSeconds(1),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                OnRetry = args =>
+                {
+                    _logger.LogWarning("Retrying HTTP request (attempt {Attempt}) due to: {Exception}", 
+                        args.AttemptNumber + 1, args.Outcome.Exception?.Message);
+                    return ValueTask.CompletedTask;
+                }
+            })
+            .AddTimeout(TimeSpan.FromSeconds(_urlOptions.TimeoutSeconds))
+            .Build();
     }
 
     /// <inheritdoc />
     public async Task<OrgChartResponse> GetDataAsync(CancellationToken cancellationToken = default)
     {
+        return await GetDataAsync(new Dictionary<string, string>(), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<OrgChartResponse> GetDataAsync(Dictionary<string, string> forwardedHeaders, CancellationToken cancellationToken = default)
+    {
         try
         {
-            _logger.LogInformation("Fetching organizational structure from URL data source: {Url}", _options.DataSourceUrl);
+            _logger.LogInformation("Fetching organizational structure from URL data source: {Url}", _urlOptions.Url);
 
-            var response = await _httpClient.GetAsync(_options.DataSourceUrl, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            var result = await _resiliencePipeline.ExecuteAsync(async (ct) =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, _urlOptions.Url);
+                
+                // Add forwarded headers (like Authorization) to this specific request
+                foreach (var header in forwardedHeaders)
+                {
+                    request.Headers.Add(header.Key, header.Value);
+                }
 
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                var response = await _httpClient.SendAsync(request, ct);
+                response.EnsureSuccessStatusCode();
+
+                return response;
+            }, cancellationToken);
+
+            var content = await result.Content.ReadAsStringAsync(cancellationToken);
 
             var jsonOptions = new JsonSerializerOptions
             {
@@ -46,7 +106,7 @@ public class UrlBasedDataSource : IOrgChartDataSource
 
             if (orgChart == null)
             {
-                _logger.LogError("Failed to deserialize organizational structure from URL: {Url}", _options.DataSourceUrl);
+                _logger.LogError("Failed to deserialize organizational structure from URL: {Url}", _urlOptions.Url);
                 throw new DataSourceException("Failed to deserialize organizational structure from URL data source");
             }
 
@@ -55,17 +115,17 @@ public class UrlBasedDataSource : IOrgChartDataSource
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "HTTP error while fetching organizational structure from URL: {Url}", _options.DataSourceUrl);
+            _logger.LogError(ex, "HTTP error while fetching organizational structure from URL: {Url}", _urlOptions.Url);
             throw new DataSourceException($"Failed to fetch organizational structure from URL: {ex.Message}", ex);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "JSON deserialization error for organizational structure from URL: {Url}", _options.DataSourceUrl);
+            _logger.LogError(ex, "JSON deserialization error for organizational structure from URL: {Url}", _urlOptions.Url);
             throw new DataSourceException($"Failed to parse organizational structure from URL: {ex.Message}", ex);
         }
         catch (Exception ex) when (!(ex is DataSourceException))
         {
-            _logger.LogError(ex, "Unexpected error while fetching organizational structure from URL: {Url}", _options.DataSourceUrl);
+            _logger.LogError(ex, "Unexpected error while fetching organizational structure from URL: {Url}", _urlOptions.Url);
             throw new DataSourceException($"Unexpected error occurred while fetching data from URL: {ex.Message}", ex);
         }
     }
