@@ -10,6 +10,7 @@ namespace OrgChart.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // Require authentication for all actions by default
 public class OrgChartController : ControllerBase
 {
     private readonly IOrgChartService _orgChartService;

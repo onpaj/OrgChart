@@ -72,10 +72,8 @@ builder.Services.ConfigureAuthentication(builder, logger);
 // Add authorization
 builder.Services.AddAuthorization(options =>
 {
-    // Require authentication by default
-    options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
+    // Don't set FallbackPolicy - let individual controllers/actions decide
+    // This allows [AllowAnonymous] to work properly
         
     // Role-based policies
     options.AddPolicy("OrgChartReader", policy => 

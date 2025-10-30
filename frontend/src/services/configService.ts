@@ -38,7 +38,8 @@ export async function fetchConfig(): Promise<FrontendConfig> {
   try {
     console.log('Fetching frontend configuration from backend...');
     
-    // Use appropriate URL based on environment
+    // In development, we need to call backend on different port
+    // In production, both frontend and backend are served from same origin
     const configUrl = process.env.NODE_ENV === 'development' 
       ? 'http://localhost:5001/api/config' 
       : '/api/config';
