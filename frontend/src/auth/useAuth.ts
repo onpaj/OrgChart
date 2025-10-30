@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { AccountInfo, InteractionRequiredAuthError } from '@azure/msal-browser';
-import { apiRequest, userRequest } from './msalConfig';
+import { createApiRequest, createUserRequest } from './msalConfig';
+import { getConfig } from '../services/configService';
 
 interface AuthContextType {
   user: AccountInfo | null;
@@ -30,8 +31,10 @@ export const useAuth = (): AuthContextType => {
   // Login function with redirect flow - use basic scopes first
   const login = useCallback(async () => {
     setIsLoading(true);
-    console.log('Starting login with request:', userRequest);
     try {
+      const config = getConfig();
+      const userRequest = createUserRequest();
+      console.log('Starting login with request:', userRequest);
       await instance.loginRedirect(userRequest);
     } catch (error) {
       console.error('Login failed:', error);
@@ -62,19 +65,30 @@ export const useAuth = (): AuthContextType => {
 
   // Token acquisition with caching
   const getAccessToken = useCallback(async (): Promise<string | null> => {
-    if (!account) return null;
+    console.log('getAccessToken called, account:', account);
+    if (!account) {
+      console.log('No account available for token acquisition');
+      return null;
+    }
 
     // Check cached token
     if (tokenCache && Date.now() < tokenCache.expiresAt) {
+      console.log('Using cached token');
       return tokenCache.token;
     }
 
     try {
+      const config = getConfig();
+      const apiRequest = createApiRequest(config);
+      console.log('Acquiring new token with scopes:', apiRequest.scopes);
+      
       // Try silent token acquisition
       const response = await instance.acquireTokenSilent({
         ...apiRequest,
         account,
       });
+      
+      console.log('Token acquired successfully, length:', response.accessToken.length);
       
       // Cache token for 55 minutes (5-minute buffer before expiration)
       tokenCache = {
@@ -87,6 +101,8 @@ export const useAuth = (): AuthContextType => {
       if (error instanceof InteractionRequiredAuthError) {
         // Fallback to redirect for interactive token acquisition
         try {
+          const config = getConfig();
+          const apiRequest = createApiRequest(config);
           await instance.acquireTokenRedirect({
             ...apiRequest,
             account,
@@ -100,6 +116,11 @@ export const useAuth = (): AuthContextType => {
       }
       
       console.error('Token acquisition failed:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return null;
     }
   }, [instance, account]);
