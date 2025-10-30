@@ -28,6 +28,7 @@ let configCache: FrontendConfig | null = null;
 /**
  * Fetches the frontend configuration from the backend
  * Results are cached for the duration of the session
+ * Falls back to environment variables if backend config fails
  */
 export async function fetchConfig(): Promise<FrontendConfig> {
   if (configCache) {
@@ -52,7 +53,8 @@ export async function fetchConfig(): Promise<FrontendConfig> {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch config: ${response.status} ${response.statusText}`);
+      console.warn(`Config endpoint failed: ${response.status} ${response.statusText}, falling back to environment variables`);
+      return createFallbackConfig();
     }
 
     const config: FrontendConfig = await response.json();
@@ -66,15 +68,66 @@ export async function fetchConfig(): Promise<FrontendConfig> {
 
     // Validate required fields
     if (!config.msal.clientId || !config.msal.tenantId || !config.msal.backendClientId) {
-      throw new Error('Missing required MSAL configuration fields');
+      console.warn('Backend config missing required fields, falling back to environment variables');
+      return createFallbackConfig();
     }
 
     configCache = config;
     return config;
   } catch (error) {
     console.error('Error fetching frontend configuration:', error);
-    throw new Error(`Failed to load application configuration: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.log('Falling back to environment variables...');
+    return createFallbackConfig();
   }
+}
+
+/**
+ * Creates configuration from environment variables as fallback
+ * Only works in development - production relies on backend config endpoint
+ */
+function createFallbackConfig(): FrontendConfig {
+  // In development, try environment variables
+  if (process.env.NODE_ENV === 'development') {
+    const clientId = process.env.REACT_APP_AZURE_CLIENT_ID || '';
+    const tenantId = process.env.REACT_APP_AZURE_TENANT_ID || '';
+    const backendClientId = process.env.REACT_APP_AZURE_BACKEND_CLIENT_ID || '';
+    const authority = process.env.REACT_APP_AZURE_AUTHORITY || `https://login.microsoftonline.com/${tenantId}`;
+
+    if (clientId && tenantId && backendClientId) {
+      const config: FrontendConfig = {
+        msal: {
+          clientId,
+          tenantId,
+          authority,
+          backendClientId,
+        },
+        api: {
+          baseUrl: process.env.REACT_APP_API_URL || '/api',
+        },
+        features: {
+          authenticationEnabled: true,
+        },
+      };
+
+      console.log('Using fallback configuration from environment variables:', {
+        hasClientId: !!config.msal.clientId,
+        hasTenantId: !!config.msal.tenantId,
+        hasBackendClientId: !!config.msal.backendClientId,
+        authEnabled: config.features.authenticationEnabled
+      });
+
+      configCache = config;
+      return config;
+    }
+  }
+
+  // In production or if dev env vars missing, config endpoint is required
+  throw new Error(
+    'Configuration unavailable. ' +
+    (process.env.NODE_ENV === 'development' 
+      ? 'Please configure REACT_APP_AZURE_* environment variables or ensure backend is running with config endpoint.' 
+      : 'Please configure Frontend__ClientId and AzureAd settings in Azure Web App Application Settings.')
+  );
 }
 
 /**
