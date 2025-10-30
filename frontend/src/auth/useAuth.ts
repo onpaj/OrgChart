@@ -32,7 +32,6 @@ export const useAuth = (): AuthContextType => {
   const login = useCallback(async () => {
     setIsLoading(true);
     try {
-      const config = getConfig();
       const userRequest = createUserRequest();
       console.log('Starting login with request:', userRequest);
       await instance.loginRedirect(userRequest);
