@@ -2,12 +2,22 @@ import React from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useOrgChart } from '../hooks';
-import { orgChartApi } from '../api';
 
-// Mock the API
-jest.mock('../api');
+// Mock the API client hook
+const mockGet = jest.fn();
+const mockPost = jest.fn();
+const mockPut = jest.fn();
+const mockDelete = jest.fn();
 
-const mockedOrgChartApi = orgChartApi as jest.Mocked<typeof orgChartApi>;
+jest.mock('../apiClient', () => ({
+  useApiClient: () => ({
+    get: mockGet,
+    post: mockPost,
+    put: mockPut,
+    delete: mockDelete,
+    request: jest.fn(),
+  }),
+}));
 
 describe('useOrgChart Hook', () => {
   let queryClient: QueryClient;
@@ -43,7 +53,7 @@ describe('useOrgChart Hook', () => {
       },
     };
 
-    mockedOrgChartApi.getOrganizationStructure.mockResolvedValueOnce(mockData);
+    mockGet.mockResolvedValueOnce(mockData);
 
     const { result } = renderHook(() => useOrgChart(), { wrapper });
 
@@ -58,7 +68,7 @@ describe('useOrgChart Hook', () => {
 
   test('should handle API errors', async () => {
     const mockError = new Error('Failed to fetch');
-    mockedOrgChartApi.getOrganizationStructure.mockRejectedValueOnce(mockError);
+    mockGet.mockRejectedValueOnce(mockError);
 
     const { result } = renderHook(() => useOrgChart(), { wrapper });
 
@@ -72,7 +82,7 @@ describe('useOrgChart Hook', () => {
   });
 
   test('should show loading state initially', () => {
-    mockedOrgChartApi.getOrganizationStructure.mockImplementation(
+    mockGet.mockImplementation(
       () => new Promise(() => {}) // Never resolves
     );
 
