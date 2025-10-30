@@ -5,30 +5,35 @@ import App from './App';
 
 // Mock MSAL config functions
 jest.mock('./auth/msalConfig', () => ({
-  createMsalConfig: jest.fn().mockReturnValue({
-    auth: {
-      clientId: 'test-client-id',
-      authority: 'https://login.microsoftonline.com/test-tenant-id',
-      redirectUri: 'http://localhost',
-      postLogoutRedirectUri: 'http://localhost',
-      navigateToLoginRequestUrl: false,
-    },
-    cache: {
-      cacheLocation: 'localStorage',
-      storeAuthStateInCookie: true,
-    },
+  createMsalConfig: (config: any) => {
+    if (!config) {
+      throw new Error('Config is undefined in createMsalConfig mock');
+    }
+    return {
+      auth: {
+        clientId: config.msal.clientId,
+        authority: config.msal.authority,
+        redirectUri: 'http://localhost',
+        postLogoutRedirectUri: 'http://localhost',
+        navigateToLoginRequestUrl: false,
+      },
+      cache: {
+        cacheLocation: 'localStorage',
+        storeAuthStateInCookie: true,
+      },
+    };
+  },
+  createApiRequest: (config: any) => ({
+    scopes: [`api://${config.msal.backendClientId}/access_as_user`],
   }),
-  createApiRequest: jest.fn().mockReturnValue({
-    scopes: ['api://test-backend-client-id/access_as_user'],
-  }),
-  createUserRequest: jest.fn().mockReturnValue({
+  createUserRequest: () => ({
     scopes: ['openid', 'profile'],
   }),
 }));
 
 // Mock the config service to avoid network requests
-jest.mock('./services/configService', () => ({
-  fetchConfig: jest.fn().mockResolvedValue({
+jest.mock('./services/configService', () => {
+  const mockConfig = {
     msal: {
       clientId: 'test-client-id',
       tenantId: 'test-tenant-id',
@@ -41,33 +46,32 @@ jest.mock('./services/configService', () => ({
     features: {
       authenticationEnabled: true,
     },
-  }),
-  getConfig: jest.fn().mockReturnValue({
-    msal: {
-      clientId: 'test-client-id',
-      tenantId: 'test-tenant-id',
-      authority: 'https://login.microsoftonline.com/test-tenant-id',
-      backendClientId: 'test-backend-client-id',
-    },
-    api: {
-      baseUrl: '/api',
-    },
-    features: {
-      authenticationEnabled: true,
-    },
-  }),
-  clearConfigCache: jest.fn(),
-}));
+  };
+
+  return {
+    fetchConfig: async () => mockConfig,
+    getConfig: () => mockConfig,
+    clearConfigCache: () => {},
+  };
+});
 
 // Mock MSAL to avoid crypto API requirements in test environment
-jest.mock('@azure/msal-browser', () => ({
-  PublicClientApplication: jest.fn().mockImplementation(() => ({
-    initialize: jest.fn().mockResolvedValue(undefined),
-    handleRedirectPromise: jest.fn().mockResolvedValue(null),
-    getAllAccounts: jest.fn().mockReturnValue([]),
-    acquireTokenSilent: jest.fn(),
-  })),
-}));
+jest.mock('@azure/msal-browser', () => {
+  return {
+    PublicClientApplication: class MockPublicClientApplication {
+      async initialize() {
+        return undefined;
+      }
+      async handleRedirectPromise() {
+        return null;
+      }
+      getAllAccounts() {
+        return [];
+      }
+      acquireTokenSilent = jest.fn();
+    },
+  };
+});
 
 // Mock MSAL React
 jest.mock('@azure/msal-react', () => ({
