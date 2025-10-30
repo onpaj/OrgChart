@@ -2,8 +2,8 @@ using OrgChart.API.Services;
 using OrgChart.API.Configuration;
 using OrgChart.API.DataSources;
 using OrgChart.API.Repositories;
-using OrgChart.API.Authentication;
-using Microsoft.AspNetCore.Authentication;
+using OrgChart.API.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,7 +55,7 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] { "http://localhost:3000" };
+            ?? new[] { "http://localhost:3001" }; // Updated to match frontend port
         
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
@@ -64,59 +64,25 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Optional authentication
-var authEnabled = builder.Configuration.GetValue<bool>("Authentication:Enabled");
-if (authEnabled)
-{
-    if (builder.Environment.IsDevelopment())
-    {
-        // Development authentication with fake claims
-        builder.Services.AddAuthentication("Development")
-               .AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>("Development", options => { })
-               .AddScheme<AuthenticationSchemeOptions, AzureAppServiceAuthenticationHandler>("AzureAppService", options => { })
-               .AddJwtBearer("Bearer", options =>
-               {
-                   options.Authority = builder.Configuration["Authentication:Authority"];
-                   options.TokenValidationParameters.ValidateAudience = false;
-               });
-    }
-    else
-    {
-        // Production authentication
-        builder.Services.AddAuthentication("AzureAppService")
-               .AddScheme<AuthenticationSchemeOptions, AzureAppServiceAuthenticationHandler>("AzureAppService", options => { })
-               .AddJwtBearer("Bearer", options =>
-               {
-                   options.Authority = builder.Configuration["Authentication:Authority"];
-                   options.TokenValidationParameters.ValidateAudience = false;
-               });
-    }
-}
+// Configure authentication
+var loggerFactory = LoggerFactory.Create(logBuilder => logBuilder.AddConsole());
+var logger = loggerFactory.CreateLogger("Authentication");
+builder.Services.ConfigureAuthentication(builder, logger);
 
-// Add authorization policies (always register, even if auth is disabled)
+// Add authorization
 builder.Services.AddAuthorization(options =>
 {
-    if (authEnabled)
-    {
-        if (builder.Environment.IsDevelopment())
-        {
-            // In development, allow all authenticated users to have write access for easier testing
-            options.AddPolicy("OrgChartWritePolicy", policy =>
-                policy.RequireAuthenticatedUser());
-        }
-        else
-        {
-            // In production, require specific OrgChart_Write claim
-            options.AddPolicy("OrgChartWritePolicy", policy =>
-                policy.RequireClaim("OrgChart_Write"));
-        }
-    }
-    else
-    {
-        // When authentication is disabled, allow all requests
-        options.AddPolicy("OrgChartWritePolicy", policy =>
-            policy.RequireAssertion(context => true));
-    }
+    // Require authentication by default
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+        
+    // Role-based policies
+    options.AddPolicy("OrgChartReader", policy => 
+        policy.RequireClaim("scp", "access_as_user"));
+        
+    options.AddPolicy("OrgChartWriter", policy => 
+        policy.RequireClaim("scp", "OrgChart_Admin"));
 });
 
 var app = builder.Build();
@@ -131,12 +97,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors();
 
-// Use authentication if enabled
-if (authEnabled)
-{
-    app.UseAuthentication();
-    app.UseAuthorization();
-}
+// Configure authentication middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Serve static files (React build output)
 app.UseDefaultFiles();

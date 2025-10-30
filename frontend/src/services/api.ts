@@ -30,17 +30,13 @@ export class OrgChartApi {
       ...additionalHeaders,
     };
 
-    // Development authentication for local testing
-    if (process.env.NODE_ENV === 'development' && window.location.hostname === 'localhost') {
-      // Add development user header for local testing
-      // You can change this to test different user scenarios
-      headers['X-Development-User'] = 'admin'; // Use 'admin' for write access, 'testuser' for read-only
+    // Always try to get access token (both development and production)
+    const token = await getAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      console.log('Added Authorization header with token');
     } else {
-      // Try to get access token for production
-      const token = await getAccessToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+      console.log('No token available for Authorization header');
     }
 
     return headers;
