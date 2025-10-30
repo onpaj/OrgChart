@@ -4,8 +4,8 @@ export const msalConfig: Configuration = {
   auth: {
     clientId: process.env.REACT_APP_AZURE_CLIENT_ID!,
     authority: process.env.REACT_APP_AZURE_AUTHORITY!,
-    redirectUri: "http://localhost:3001",
-    postLogoutRedirectUri: "http://localhost:3001",
+    redirectUri: window.location.origin,
+    postLogoutRedirectUri: window.location.origin,
     navigateToLoginRequestUrl: false, // Prevent navigation issues
   },
   cache: {
