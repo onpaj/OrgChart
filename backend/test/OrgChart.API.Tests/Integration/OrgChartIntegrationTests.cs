@@ -50,7 +50,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         var configuration = new Dictionary<string, string?>
         {
-            ["Authentication:Enabled"] = "false",
+            ["UseMockAuth"] = "true",
             ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
         };
 
@@ -81,7 +81,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Authentication:Enabled"] = "true",
+                    ["UseMockAuth"] = "false",
                     ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
                 });
             });
@@ -110,7 +110,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         var configuration = new Dictionary<string, string?>
         {
-            ["Authentication:Enabled"] = "false",
+            ["UseMockAuth"] = "true",
             ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
         };
 
@@ -152,7 +152,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         var configuration = new Dictionary<string, string?>
         {
-            ["Authentication:Enabled"] = "false",
+            ["UseMockAuth"] = "true",
             ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart"
         };
 
@@ -195,7 +195,7 @@ public class OrgChartIntegrationTests : IClassFixture<WebApplicationFactory<Prog
 
         var configuration = new Dictionary<string, string?>
         {
-            ["Authentication:Enabled"] = "false",
+            ["UseMockAuth"] = "true",
             ["OrgChart:DataSourceUrl"] = "https://api.example.com/orgchart",
             ["Cors:AllowedOrigins:0"] = "http://localhost:3000"
         };

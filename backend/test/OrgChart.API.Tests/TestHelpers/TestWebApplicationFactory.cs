@@ -35,7 +35,7 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
             // Add test configuration
             var testConfig = new Dictionary<string, string?>
             {
-                ["Authentication:Enabled"] = "false",
+                ["UseMockAuth"] = "true",
                 ["OrgChart:DataSourceType"] = "Url",
                 ["OrgChart:DataSourceUrl"] = "https://test.example.com/orgchart",
                 ["OrgChart:Permissions:InsertEnabled"] = "false",
@@ -54,6 +54,26 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
 
         builder.ConfigureServices(services =>
         {
+            // Check if mock auth is enabled
+            var useMockAuth = _configuration.GetValueOrDefault("UseMockAuth", "false");
+            
+            if (useMockAuth == "true")
+            {
+                // Replace authorization policies when using mock auth to allow all requests
+                services.AddAuthorization(options =>
+                {
+                    // Remove the fallback policy that requires authentication
+                    options.FallbackPolicy = null;
+                    
+                    // Create permissive policies for testing
+                    options.AddPolicy("OrgChartReader", policy => 
+                        policy.RequireAssertion(_ => true));
+                        
+                    options.AddPolicy("OrgChartWriter", policy => 
+                        policy.RequireAssertion(_ => true));
+                });
+            }
+            
             // Replace the OrgChartService with mock if provided
             if (_mockOrgChartService != null)
             {

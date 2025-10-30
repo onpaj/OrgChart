@@ -38,9 +38,9 @@ public class OrgChartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<OrgChartResponse>> GetOrganizationStructure(CancellationToken cancellationToken)
     {
-        // Apply authorization only if authentication is enabled
-        var authEnabled = _configuration.GetValue<bool>("Authentication:Enabled");
-        if (authEnabled && !(User.Identity?.IsAuthenticated == true))
+        // Apply authorization only if mock auth is not enabled
+        var useMockAuth = _configuration.GetValue<bool>("UseMockAuth", false);
+        if (!useMockAuth && !(User.Identity?.IsAuthenticated == true))
         {
             return Unauthorized();
         }
@@ -52,14 +52,14 @@ public class OrgChartController : ControllerBase
 
             // Check if user has OrgChart_Write claim
             var canEdit = false;
-            if (authEnabled && User.Identity?.IsAuthenticated == true)
+            if (useMockAuth)
+            {
+                // If using mock auth, allow editing
+                canEdit = true;
+            }
+            else if (User.Identity?.IsAuthenticated == true)
             {
                 canEdit = User.HasClaim(c => c.Type == "OrgChart_Write");
-            }
-            else if (!authEnabled)
-            {
-                // If authentication is disabled, allow editing
-                canEdit = true;
             }
 
             result.Permissions = new UserPermissions { CanEdit = canEdit };
