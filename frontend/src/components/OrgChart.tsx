@@ -21,6 +21,7 @@ import {
 import PositionModal from './PositionModal';
 import EmployeeModal from './EmployeeModal';
 import ConfirmDialog from './ConfirmDialog';
+import UserAvatar from './common/UserAvatar';
 
 const OrgChart: React.FC = () => {
   // Fetch organization data from backend
@@ -392,15 +393,6 @@ const OrgChart: React.FC = () => {
     }
   };
 
-  const getInitials = (name: string | undefined) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
-  };
-
   // Build hierarchical tree structure
   const buildTree = (positions: Position[]): Position[] => {
     const positionMap = new Map(positions.map((p) => [p.id, p]));
@@ -512,20 +504,25 @@ const OrgChart: React.FC = () => {
                 <div className="space-y-0.5 mt-1">
                   {position.employees.map((emp) => (
                     <div key={emp.id} className="flex items-center gap-1 group">
-                      <div className="text-xs font-medium text-gray-900 truncate leading-tight flex-1">
-                        {emp.url ? (
-                          <a
-                            href={emp.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-indigo-600 transition-colors"
-                          >
-                            {emp.name}
-                          </a>
-                        ) : (
-                          emp.name
-                        )}
-                      </div>
+                      <UserAvatar 
+                        email={emp.email} 
+                        size="sm" 
+                        showName={true}
+                        className="flex-1 min-w-0"
+                      />
+                      {emp.url && (
+                        <a
+                          href={emp.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-indigo-600 transition-colors"
+                          title="View profile"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
                       {isEditMode && canEdit && (
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
@@ -665,38 +662,36 @@ const OrgChart: React.FC = () => {
           <div className="border-t border-gray-200 pt-3 sm:pt-4 space-y-1.5 sm:space-y-2">
             {(position.employees || []).map((emp) => (
               <div key={emp.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-gray-50 transition-colors group">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600">
-                  {getInitials(emp.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  {emp.url ? (
-                    <a
-                      href={emp.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs sm:text-sm font-semibold text-gray-900 truncate hover:text-indigo-600 transition-colors flex items-center gap-1 cursor-pointer"
+                <UserAvatar 
+                  email={emp.email} 
+                  size="md" 
+                  showName={true}
+                  className="flex-1 min-w-0"
+                />
+                {emp.url && (
+                  <a
+                    href={emp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-indigo-600 transition-colors ml-2"
+                    title="View profile"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      {emp.name}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-3 w-3 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                        />
-                      </svg>
-                    </a>
-                  ) : (
-                    <div className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{emp.name}</div>
-                  )}
-                  <div className="text-xs text-gray-500 truncate">{emp.email}</div>
-                </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                )}
                 {isEditMode && canEdit && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button

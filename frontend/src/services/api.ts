@@ -6,6 +6,8 @@ import {
   UpdatePositionRequest,
   CreateEmployeeRequest,
   UpdateEmployeeRequest,
+  GraphUserInfo,
+  UserPhotoResponse,
 } from '../types/orgchart';
 import { getAccessToken } from './auth';
 
@@ -165,6 +167,58 @@ export class OrgChartApi {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(`Failed to delete employee: ${error.message || response.statusText}`);
     }
+  }
+
+  /**
+   * Gets user profile information from Microsoft Graph by email
+   */
+  async getUserProfile(email: string): Promise<GraphUserInfo> {
+    const response = await fetch(`${this.baseUrl}/user/profile?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+      headers: await this.createHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user profile: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Gets user profile photo from Microsoft Graph by email
+   */
+  async getUserPhoto(email: string): Promise<UserPhotoResponse> {
+    const response = await fetch(`${this.baseUrl}/user/photo?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+      headers: await this.createHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user photo: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Gets multiple user profiles by email addresses (batch operation)
+   */
+  async getUserProfilesBatch(emails: string[]): Promise<Record<string, GraphUserInfo | null>> {
+    const response = await fetch(`${this.baseUrl}/user/profiles/batch`, {
+      method: 'POST',
+      headers: await this.createHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(emails),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch user profiles: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
   }
 }
 

@@ -8,6 +8,8 @@ import {
   OrgChartResponse,
   Position,
   Employee,
+  GraphUserInfo,
+  UserPhotoResponse,
 } from '../types/orgchart';
 
 /**
@@ -119,5 +121,66 @@ export const useDeleteEmployee = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orgchart'] });
     },
+  });
+};
+
+/**
+ * React Query hook for fetching user profile from Microsoft Graph
+ */
+export const useUserProfile = (email: string, enabled: boolean = true) => {
+  const apiClient = useApiClient();
+  
+  return useQuery({
+    queryKey: ['user-profile', email],
+    queryFn: (): Promise<GraphUserInfo> => apiClient.get(`/user/profile?email=${encodeURIComponent(email)}`),
+    enabled: enabled && !!email,
+    staleTime: 1000 * 60 * 30, // Data is fresh for 30 minutes
+    gcTime: 1000 * 60 * 60, // Cache data for 1 hour
+    retry: (failureCount, error: any) => {
+      // Don't retry on 404 (user not found)
+      if (error?.message?.includes('404')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
+};
+
+/**
+ * React Query hook for fetching user photo from Microsoft Graph
+ */
+export const useUserPhoto = (email: string, enabled: boolean = true) => {
+  const apiClient = useApiClient();
+  
+  return useQuery({
+    queryKey: ['user-photo', email],
+    queryFn: (): Promise<UserPhotoResponse> => apiClient.get(`/user/photo?email=${encodeURIComponent(email)}`),
+    enabled: enabled && !!email,
+    staleTime: 1000 * 60 * 60, // Photos are fresh for 1 hour
+    gcTime: 1000 * 60 * 60 * 24, // Cache photos for 24 hours
+    retry: (failureCount, error: any) => {
+      // Don't retry on 404 (photo not found)
+      if (error?.message?.includes('404')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+  });
+};
+
+/**
+ * React Query hook for fetching multiple user profiles in batch
+ */
+export const useUserProfilesBatch = (emails: string[], enabled: boolean = true) => {
+  const apiClient = useApiClient();
+  
+  return useQuery({
+    queryKey: ['user-profiles-batch', emails.sort()], // Sort for consistent caching
+    queryFn: (): Promise<Record<string, GraphUserInfo | null>> => 
+      apiClient.post('/user/profiles/batch', emails),
+    enabled: enabled && emails.length > 0,
+    staleTime: 1000 * 60 * 30, // Data is fresh for 30 minutes
+    gcTime: 1000 * 60 * 60, // Cache data for 1 hour
+    retry: 2,
   });
 };

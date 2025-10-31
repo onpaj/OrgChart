@@ -49,6 +49,14 @@ switch (dataSourceType.ToLower())
 
 // Register the services
 builder.Services.AddScoped<IOrgChartService, OrgChartService>();
+builder.Services.AddScoped<IMicrosoftGraphService, MicrosoftGraphService>();
+builder.Services.AddScoped<IUserCacheService, UserCacheService>();
+
+// Add memory cache
+builder.Services.AddMemoryCache();
+
+// Register background service
+builder.Services.AddHostedService<UserDataBackgroundService>();
 
 // Register permission service based on authentication mode
 var useMockAuth = builder.Configuration.GetValue<bool>("UseMockAuth", false);

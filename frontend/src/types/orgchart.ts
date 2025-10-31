@@ -73,3 +73,22 @@ export interface UpdateEmployeeRequest {
   url?: string;
   positionId: string;
 }
+
+// Microsoft Graph user information
+export interface GraphUserInfo {
+  displayName: string;
+  email: string;
+  mobilePhone?: string;
+  businessPhone?: string;
+  jobTitle?: string;
+  department?: string;
+  profilePhoto?: string;
+  photoContentType?: string;
+  officeLocation?: string;
+}
+
+export interface UserPhotoResponse {
+  photoData: string;
+  contentType: string;
+  dataUrl: string;
+}
