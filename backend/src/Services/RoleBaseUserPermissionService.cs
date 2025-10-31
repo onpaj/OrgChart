@@ -12,6 +12,6 @@ public class RoleBaseUserPermissionService : IUserPermissionService
     {
         // Check if user is authenticated and has admin role
         return user?.Identity?.IsAuthenticated == true && 
-               user.HasClaim(OrgChartClaims.Types.Role, OrgChartClaims.Roles.Admin);
+               user.HasClaim(ClaimTypes.Role, OrgChartClaims.Roles.Admin);
     }
 }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
 namespace OrgChart.API.Authorization;
@@ -12,7 +13,7 @@ public class OrgChartAuthorizationHandler : AuthorizationHandler<OrgChartRequire
         OrgChartRequirement requirement)
     {
         // Check if user is authenticated
-        if (!context.User.Identity?.IsAuthenticated == true)
+        if (context.User.Identity?.IsAuthenticated == false)
         {
             return Task.CompletedTask;
         }
@@ -21,16 +22,13 @@ public class OrgChartAuthorizationHandler : AuthorizationHandler<OrgChartRequire
         switch (requirement.AccessLevel)
         {
             case OrgChartAccessLevel.Read:
-                // For read access, require scope claim
-                if (context.User.HasClaim(OrgChartClaims.Types.Scope, OrgChartClaims.Scopes.AccessAsUser))
-                {
-                    context.Succeed(requirement);
-                }
+                // For read access, authenticated user is enough
+                context.Succeed(requirement);
                 break;
 
             case OrgChartAccessLevel.Write:
                 // For write access, require admin role
-                if (context.User.HasClaim(OrgChartClaims.Types.Role, OrgChartClaims.Roles.Admin))
+                if (context.User.HasClaim(ClaimTypes.Role, OrgChartClaims.Roles.Admin))
                 {
                     context.Succeed(requirement);
                 }

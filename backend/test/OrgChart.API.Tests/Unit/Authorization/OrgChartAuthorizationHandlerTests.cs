@@ -33,13 +33,12 @@ public class OrgChartAuthorizationHandlerTests
     }
 
     [Fact]
-    public async Task HandleRequirementAsync_WhenUserAuthenticatedWithReadAccessAndHasScope_ShouldSucceed()
+    public async Task HandleRequirementAsync_WhenUserAuthenticatedWithReadAccess_ShouldSucceed()
     {
         // Arrange
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(OrgChartClaims.Types.Scope, OrgChartClaims.Scopes.AccessAsUser)
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
         var requirement = new OrgChartRequirement(OrgChartAccessLevel.Read);
@@ -52,24 +51,6 @@ public class OrgChartAuthorizationHandlerTests
         context.HasSucceeded.Should().BeTrue();
     }
 
-    [Fact]
-    public async Task HandleRequirementAsync_WhenUserAuthenticatedWithReadAccessButNoScope_ShouldNotSucceed()
-    {
-        // Arrange
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, "user-id")
-        };
-        var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
-        var requirement = new OrgChartRequirement(OrgChartAccessLevel.Read);
-        var context = new AuthorizationHandlerContext(new[] { requirement }, user, null);
-
-        // Act
-        await _handler.HandleAsync(context);
-
-        // Assert
-        context.HasSucceeded.Should().BeFalse();
-    }
 
     [Fact]
     public async Task HandleRequirementAsync_WhenUserAuthenticatedWithWriteAccessAndHasAdminRole_ShouldSucceed()
@@ -78,7 +59,7 @@ public class OrgChartAuthorizationHandlerTests
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(OrgChartClaims.Types.Role, OrgChartClaims.Roles.Admin)
+            new Claim(ClaimTypes.Role, OrgChartClaims.Roles.Admin)
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
         var requirement = new OrgChartRequirement(OrgChartAccessLevel.Write);
@@ -98,7 +79,7 @@ public class OrgChartAuthorizationHandlerTests
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(OrgChartClaims.Types.Role, "User")
+            new Claim(ClaimTypes.Role, "User")
         };
         var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
         var requirement = new OrgChartRequirement(OrgChartAccessLevel.Write);

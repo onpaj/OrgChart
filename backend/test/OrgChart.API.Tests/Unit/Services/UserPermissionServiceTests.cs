@@ -45,7 +45,7 @@ public class RoleBaseUserPermissionServiceTests
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(OrgChartClaims.Types.Role, "User")
+            new Claim(ClaimTypes.Role, "User")
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var user = new ClaimsPrincipal(identity);
@@ -64,7 +64,7 @@ public class RoleBaseUserPermissionServiceTests
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(OrgChartClaims.Types.Role, OrgChartClaims.Roles.Admin)
+            new Claim(ClaimTypes.Role, OrgChartClaims.Roles.Admin)
         };
         var identity = new ClaimsIdentity(claims, "Test");
         var user = new ClaimsPrincipal(identity);
