@@ -22,6 +22,7 @@ import PositionModal from './PositionModal';
 import EmployeeModal from './EmployeeModal';
 import ConfirmDialog from './ConfirmDialog';
 import UserAvatar from './common/UserAvatar';
+import UserDetailModal from './UserDetailModal';
 
 const OrgChart: React.FC = () => {
   // Fetch organization data from backend
@@ -59,6 +60,8 @@ const OrgChart: React.FC = () => {
     message: string;
     onConfirm: () => void;
   }>({ title: '', message: '', onConfirm: () => {} });
+  const [userDetailModalOpen, setUserDetailModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
   // Check if user can edit
   const canEdit = orgChartResponse?.permissions?.canEdit || false;
@@ -157,6 +160,11 @@ const OrgChart: React.FC = () => {
         }
       );
     }
+  };
+
+  const handleViewUserDetail = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setUserDetailModalOpen(true);
   };
 
   const toggleNode = (positionId: string) => {
@@ -505,10 +513,13 @@ const OrgChart: React.FC = () => {
                   {position.employees.map((emp) => (
                     <div key={emp.id} className="flex items-center gap-1 group">
                       <UserAvatar 
-                        email={emp.email} 
+                        email={emp.email}
+                        userName={emp.name}
                         size="sm" 
                         showName={true}
                         className="flex-1 min-w-0"
+                        clickable={true}
+                        onClick={() => handleViewUserDetail(emp)}
                       />
                       {emp.url && (
                         <a
@@ -663,10 +674,13 @@ const OrgChart: React.FC = () => {
             {(position.employees || []).map((emp) => (
               <div key={emp.id} className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg hover:bg-gray-50 transition-colors group">
                 <UserAvatar 
-                  email={emp.email} 
+                  email={emp.email}
+                  userName={emp.name}
                   size="md" 
                   showName={true}
                   className="flex-1 min-w-0"
+                  clickable={true}
+                  onClick={() => handleViewUserDetail(emp)}
                 />
                 {emp.url && (
                   <a
@@ -985,6 +999,17 @@ const OrgChart: React.FC = () => {
         onCancel={() => setConfirmDialogOpen(false)}
         variant="danger"
       />
+
+      {selectedEmployee && (
+        <UserDetailModal
+          isOpen={userDetailModalOpen}
+          onClose={() => {
+            setUserDetailModalOpen(false);
+            setSelectedEmployee(null);
+          }}
+          employee={selectedEmployee}
+        />
+      )}
     </div>
   );
 };

@@ -51,21 +51,31 @@ public class MicrosoftGraphService : IMicrosoftGraphService
 
             _logger.LogInformation("Fetching user information for email: {Email}", email);
 
-            // Search for user by email
+            // Search for user by email - use basic properties first
             var users = await _graphServiceClient.Users
                 .GetAsync(requestConfiguration =>
                 {
                     requestConfiguration.QueryParameters.Filter = $"mail eq '{email}' or userPrincipalName eq '{email}'";
                     requestConfiguration.QueryParameters.Select = new[] { 
+                        "id",
                         "displayName", 
                         "mail", 
                         "mobilePhone", 
-                        "businessPhones", 
+                        "businessPhones",
                         "jobTitle", 
                         "department", 
                         "officeLocation",
-                        "userPrincipalName"
+                        "userPrincipalName",
+                        "givenName",
+                        "surname",
+                        "companyName",
+                        "employeeId",
+                        "city",
+                        "country",
+                        "preferredLanguage",
+                        "usageLocation"
                     };
+                    requestConfiguration.QueryParameters.Expand = new[] { "manager($select=displayName,mail,jobTitle)" };
                 });
 
             var user = users?.Value?.FirstOrDefault();
@@ -78,17 +88,81 @@ public class MicrosoftGraphService : IMicrosoftGraphService
             // Get user photo
             var (photoData, contentType) = await GetUserPhotoAsync(email);
 
+            // Try to get additional properties that require separate calls
+            string? hireDate = null;
+            string? birthday = null;
+            string? aboutMe = null;
+            string[]? interests = null;
+            string[]? skills = null;
+            string[]? responsibilities = null;
+
+            try
+            {
+                // Get user with additional properties (these may fail, so we handle separately)
+                var userDetailed = await _graphServiceClient.Users[user.Id]
+                    .GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Select = new[] { 
+                            "hireDate",
+                            "birthday",
+                            "aboutMe",
+                            "interests",
+                            "skills",
+                            "responsibilities"
+                        };
+                    });
+
+                hireDate = userDetailed?.HireDate?.ToString("yyyy-MM-dd");
+                birthday = userDetailed?.Birthday?.ToString("yyyy-MM-dd");
+                aboutMe = userDetailed?.AboutMe;
+                interests = userDetailed?.Interests?.ToArray();
+                skills = userDetailed?.Skills?.ToArray();
+                responsibilities = userDetailed?.Responsibilities?.ToArray();
+            }
+            catch (ServiceException ex) when (ex.ResponseStatusCode == 400 || ex.ResponseStatusCode == 403)
+            {
+                _logger.LogWarning("Additional user properties not available for {Email}: {Message}", email, ex.Message);
+                // Continue without these properties - they may not be available for this user/tenant
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not fetch additional user properties for {Email}", email);
+                // Continue without these properties
+            }
+
             var graphUserInfo = new GraphUserInfo
             {
                 DisplayName = user.DisplayName ?? string.Empty,
                 Email = user.Mail ?? user.UserPrincipalName ?? email,
                 MobilePhone = user.MobilePhone,
                 BusinessPhone = user.BusinessPhones?.FirstOrDefault(),
+                // HomePhone = user.HomePhone, // HomePhone is not available in MS Graph User object
                 JobTitle = user.JobTitle,
                 Department = user.Department,
                 OfficeLocation = user.OfficeLocation,
                 ProfilePhoto = photoData,
-                PhotoContentType = contentType
+                PhotoContentType = contentType,
+                // Additional properties
+                GivenName = user.GivenName,
+                Surname = user.Surname,
+                CompanyName = user.CompanyName,
+                EmployeeId = user.EmployeeId,
+                HireDate = hireDate,
+                Birthday = birthday,
+                AboutMe = aboutMe,
+                Interests = interests,
+                Skills = skills,
+                Responsibilities = responsibilities,
+                City = user.City,
+                Country = user.Country,
+                PreferredLanguage = user.PreferredLanguage,
+                UsageLocation = user.UsageLocation,
+                Manager = user.Manager is Microsoft.Graph.Models.User manager ? new ManagerInfo
+                {
+                    DisplayName = manager.DisplayName,
+                    Email = manager.Mail,
+                    JobTitle = manager.JobTitle
+                } : null
             };
 
             _logger.LogInformation("Successfully retrieved user information for: {Email}", email);

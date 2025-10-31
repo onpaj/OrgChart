@@ -3,10 +3,13 @@ import { useUserProfile, useUserPhoto } from '../../services/hooks';
 
 interface UserAvatarProps {
   email: string;
+  userName?: string; // Optional user name to display when Graph profile is not found
   size?: 'sm' | 'md' | 'lg';
   showName?: boolean;
   showDetails?: boolean;
   className?: string;
+  onClick?: () => void; // Optional click handler
+  clickable?: boolean; // Whether the avatar should be clickable
 }
 
 /**
@@ -14,10 +17,13 @@ interface UserAvatarProps {
  */
 export const UserAvatar: React.FC<UserAvatarProps> = ({
   email,
+  userName,
   size = 'md',
   showName = false,
   showDetails = false,
   className = '',
+  onClick,
+  clickable = false,
 }) => {
   const { data: userProfile, isLoading: profileLoading, error: profileError } = useUserProfile(email);
   const { data: userPhoto, isLoading: photoLoading } = useUserPhoto(email);
@@ -36,9 +42,13 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   };
 
   // Generate initials from name or email
-  const getInitials = (name?: string, email?: string) => {
-    if (name) {
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getInitials = (graphName?: string, localName?: string, email?: string) => {
+    // Prefer Graph display name, then local name, then email prefix
+    if (graphName) {
+      return graphName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    if (localName) {
+      return localName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
     if (email) {
       return email.slice(0, 2).toUpperCase();
@@ -46,16 +56,19 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     return '?';
   };
 
-  const initials = getInitials(userProfile?.displayName, email);
+  const initials = getInitials(userProfile?.displayName, userName, email);
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div 
+      className={`flex items-center gap-3 ${className} ${clickable ? 'cursor-pointer hover:bg-gray-50 rounded-md transition-colors' : ''}`}
+      onClick={clickable ? onClick : undefined}
+    >
       {/* Avatar Image/Initials */}
       <div className={`${sizeClasses[size]} relative rounded-full overflow-hidden bg-blue-500 text-white flex items-center justify-center font-medium shadow-sm`}>
         {userPhoto?.dataUrl && !photoLoading ? (
           <img
             src={userPhoto.dataUrl}
-            alt={userProfile?.displayName || email}
+            alt={userProfile?.displayName || userName || email}
             className="w-full h-full object-cover"
             onError={(e) => {
               // Hide image on error and show initials
@@ -80,7 +93,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
               {profileLoading ? (
                 <div className="bg-gray-200 animate-pulse h-4 w-24 rounded" />
               ) : (
-                userProfile?.displayName || email.split('@')[0]
+                userProfile?.displayName || userName || email.split('@')[0]
               )}
             </div>
           )}

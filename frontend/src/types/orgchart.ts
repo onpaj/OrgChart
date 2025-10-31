@@ -80,11 +80,32 @@ export interface GraphUserInfo {
   email: string;
   mobilePhone?: string;
   businessPhone?: string;
+  homePhone?: string;
   jobTitle?: string;
   department?: string;
   profilePhoto?: string;
   photoContentType?: string;
   officeLocation?: string;
+  // Additional properties from MS Graph
+  givenName?: string;
+  surname?: string;
+  companyName?: string;
+  employeeId?: string;
+  hireDate?: string;
+  birthday?: string;
+  aboutMe?: string;
+  interests?: string[];
+  skills?: string[];
+  responsibilities?: string[];
+  manager?: {
+    displayName?: string;
+    email?: string;
+    jobTitle?: string;
+  };
+  city?: string;
+  country?: string;
+  preferredLanguage?: string;
+  usageLocation?: string;
 }
 
 export interface UserPhotoResponse {
