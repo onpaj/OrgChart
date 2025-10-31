@@ -3,12 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import OrgChart from '../OrgChart';
-import { useOrgChart } from '../../services/hooks';
+import { useOrgChart, useUserProfile, useUserPhoto } from '../../services/hooks';
 
 // Mock the hooks
 jest.mock('../../services/hooks');
 
 const mockedUseOrgChart = useOrgChart as jest.MockedFunction<typeof useOrgChart>;
+const mockedUseUserProfile = useUserProfile as jest.MockedFunction<typeof useUserProfile>;
+const mockedUseUserPhoto = useUserPhoto as jest.MockedFunction<typeof useUserPhoto>;
 
 describe('OrgChart Component', () => {
   let queryClient: QueryClient;
@@ -22,6 +24,59 @@ describe('OrgChart Component', () => {
       },
     });
     jest.clearAllMocks();
+
+    // Mock useUserProfile and useUserPhoto hooks with default values
+    mockedUseUserProfile.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isSuccess: false,
+      isError: false,
+      dataUpdatedAt: 0,
+      errorUpdatedAt: 0,
+      failureCount: 0,
+      failureReason: null,
+      fetchStatus: 'idle',
+      isLoadingError: false,
+      isPaused: false,
+      isPending: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: false,
+      errorUpdateCount: 0,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: false,
+      refetch: jest.fn(),
+      status: 'pending',
+    } as any);
+
+    mockedUseUserPhoto.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isSuccess: false,
+      isError: false,
+      dataUpdatedAt: 0,
+      errorUpdatedAt: 0,
+      failureCount: 0,
+      failureReason: null,
+      fetchStatus: 'idle',
+      isLoadingError: false,
+      isPaused: false,
+      isPending: false,
+      isPlaceholderData: false,
+      isRefetchError: false,
+      isRefetching: false,
+      isStale: false,
+      errorUpdateCount: 0,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: false,
+      refetch: jest.fn(),
+      status: 'pending',
+    } as any);
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -89,9 +144,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: false,
+      isFetchedAfterMount: false,
+      isFetching: true,
       refetch: jest.fn(),
       status: 'pending',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -118,9 +177,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 1,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'error',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -146,9 +209,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -179,9 +246,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -215,9 +286,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -252,9 +327,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -294,9 +373,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
@@ -346,9 +429,13 @@ describe('OrgChart Component', () => {
       isRefetchError: false,
       isRefetching: false,
       isStale: false,
+      errorUpdateCount: 0,
+      isFetched: true,
+      isFetchedAfterMount: true,
+      isFetching: false,
       refetch: jest.fn(),
       status: 'success',
-    });
+    } as any);
 
     render(<OrgChart />, { wrapper });
 
