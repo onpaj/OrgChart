@@ -8,6 +8,7 @@ using Moq.Protected;
 using OrgChart.API.DataSources;
 using OrgChart.API.Repositories;
 using OrgChart.API.Services;
+using OrgChart.API.Authorization;
 using System.Net;
 
 namespace OrgChart.API.Tests.TestHelpers;
@@ -66,12 +67,20 @@ public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartu
                     options.FallbackPolicy = null;
                     
                     // Create permissive policies for testing
-                    options.AddPolicy("OrgChartReader", policy => 
+                    options.AddPolicy(OrgChartPolicies.Read, policy => 
                         policy.RequireAssertion(_ => true));
                         
-                    options.AddPolicy("OrgChartWriter", policy => 
+                    options.AddPolicy(OrgChartPolicies.Write, policy => 
                         policy.RequireAssertion(_ => true));
                 });
+
+                // Remove existing permission service and replace with mock
+                var permissionServiceDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IUserPermissionService));
+                if (permissionServiceDescriptor != null)
+                {
+                    services.Remove(permissionServiceDescriptor);
+                }
+                services.AddScoped<IUserPermissionService, MockUserPermissionService>();
             }
             
             // Replace the OrgChartService with mock if provided

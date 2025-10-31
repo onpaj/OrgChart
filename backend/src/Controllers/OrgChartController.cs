@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OrgChart.API.Models;
 using OrgChart.API.Services;
+using OrgChart.API.Authorization;
 
 namespace OrgChart.API.Controllers;
 
@@ -10,21 +11,21 @@ namespace OrgChart.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // Require authentication for all actions by default
+[Authorize(Policy = OrgChartPolicies.Read)] // Require reader access by default
 public class OrgChartController : ControllerBase
 {
     private readonly IOrgChartService _orgChartService;
     private readonly ILogger<OrgChartController> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly IUserPermissionService _permissionService;
 
     public OrgChartController(
         IOrgChartService orgChartService,
         ILogger<OrgChartController> logger,
-        IConfiguration configuration)
+        IUserPermissionService permissionService)
     {
         _orgChartService = orgChartService;
         _logger = logger;
-        _configuration = configuration;
+        _permissionService = permissionService;
     }
 
     /// <summary>
@@ -39,31 +40,16 @@ public class OrgChartController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<OrgChartResponse>> GetOrganizationStructure(CancellationToken cancellationToken)
     {
-        // Apply authorization only if mock auth is not enabled
-        var useMockAuth = _configuration.GetValue<bool>("UseMockAuth", false);
-        if (!useMockAuth && !(User.Identity?.IsAuthenticated == true))
-        {
-            return Unauthorized();
-        }
-
         try
         {
             _logger.LogInformation("Fetching organizational structure");
             var result = await _orgChartService.GetOrganizationStructureAsync(cancellationToken);
 
-            // Check if user has OrgChart_Write claim
-            var canEdit = false;
-            if (useMockAuth)
-            {
-                // If using mock auth, allow editing
-                canEdit = true;
-            }
-            else if (User.Identity?.IsAuthenticated == true)
-            {
-                canEdit = User.HasClaim(c => c.Type == "OrgChart_Write");
-            }
-
-            result.Permissions = new UserPermissions { CanEdit = canEdit };
+            // Set permissions based on user's authorization level
+            result.Permissions = new UserPermissions 
+            { 
+                CanEdit = _permissionService.CanEdit(User) 
+            };
 
             return Ok(result);
         }
@@ -87,7 +73,7 @@ public class OrgChartController : ControllerBase
     /// <response code="400">Bad request - invalid data</response>
     /// <response code="500">Internal server error</response>
     [HttpPost("positions")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(typeof(Position), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -123,7 +109,7 @@ public class OrgChartController : ControllerBase
     /// <response code="400">Bad request - invalid data</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("positions/{id}")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(typeof(Position), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -158,7 +144,7 @@ public class OrgChartController : ControllerBase
     /// <response code="404">Position not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("positions/{id}")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -192,7 +178,7 @@ public class OrgChartController : ControllerBase
     /// <response code="400">Bad request - invalid data</response>
     /// <response code="500">Internal server error</response>
     [HttpPost("employees")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(typeof(Employee), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -228,7 +214,7 @@ public class OrgChartController : ControllerBase
     /// <response code="400">Bad request - invalid data</response>
     /// <response code="500">Internal server error</response>
     [HttpPut("employees/{id}")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(typeof(Employee), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -263,7 +249,7 @@ public class OrgChartController : ControllerBase
     /// <response code="404">Employee not found</response>
     /// <response code="500">Internal server error</response>
     [HttpDelete("employees/{id}")]
-    [Authorize(Policy = "OrgChartWritePolicy")]
+    [Authorize(Policy = OrgChartPolicies.Write)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

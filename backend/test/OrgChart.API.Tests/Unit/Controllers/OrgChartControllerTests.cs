@@ -1,7 +1,6 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OrgChart.API.Controllers;
@@ -15,30 +14,28 @@ public class OrgChartControllerTests
 {
     private readonly Mock<IOrgChartService> _mockOrgChartService;
     private readonly Mock<ILogger<OrgChartController>> _mockLogger;
-    private readonly Mock<IConfiguration> _mockConfiguration;
+    private readonly Mock<IUserPermissionService> _mockPermissionService;
     private readonly OrgChartController _controller;
 
     public OrgChartControllerTests()
     {
         _mockOrgChartService = new Mock<IOrgChartService>();
         _mockLogger = new Mock<ILogger<OrgChartController>>();
-        _mockConfiguration = new Mock<IConfiguration>();
+        _mockPermissionService = new Mock<IUserPermissionService>();
         
         _controller = new OrgChartController(
             _mockOrgChartService.Object,
             _mockLogger.Object,
-            _mockConfiguration.Object);
+            _mockPermissionService.Object);
     }
 
     [Fact]
-    public async Task GetOrganizationStructure_WhenAuthDisabledAndServiceReturnsData_ShouldReturnOkResult()
+    public async Task GetOrganizationStructure_WhenPermissionServiceAllowsEdit_ShouldSetPermissionsToTrue()
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("true");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("true");
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -48,17 +45,19 @@ public class OrgChartControllerTests
         // Assert
         result.Should().BeOfType<ActionResult<OrgChartResponse>>();
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+        var response = okResult.Value.Should().BeOfType<OrgChartResponse>().Subject;
+        response.Permissions.CanEdit.Should().BeTrue();
     }
 
     [Fact]
-    public async Task GetOrganizationStructure_WhenAuthEnabledAndUserNotAuthenticated_ShouldReturnUnauthorized()
+    public async Task GetOrganizationStructure_WhenPermissionServiceDeniesEdit_ShouldSetPermissionsToFalse()
     {
         // Arrange
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("false");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("false");
+        var expectedResponse = CreateSampleOrgChartResponse();
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(false);
+        _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedResponse);
         
         var mockIdentity = new Mock<ClaimsIdentity>();
         mockIdentity.Setup(i => i.IsAuthenticated).Returns(false);
@@ -77,18 +76,19 @@ public class OrgChartControllerTests
         var result = await _controller.GetOrganizationStructure(CancellationToken.None);
 
         // Assert
-        result.Result.Should().BeOfType<UnauthorizedResult>();
+        result.Should().BeOfType<ActionResult<OrgChartResponse>>();
+        var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
+        var response = okResult.Value.Should().BeOfType<OrgChartResponse>().Subject;
+        response.Permissions.CanEdit.Should().BeFalse();
     }
 
     [Fact]
-    public async Task GetOrganizationStructure_WhenAuthEnabledAndUserAuthenticated_ShouldReturnOkResult()
+    public async Task GetOrganizationStructure_WhenServiceReturnsData_ShouldReturnOkResult()
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("false");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("false");
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -111,7 +111,8 @@ public class OrgChartControllerTests
         // Assert
         result.Should().BeOfType<ActionResult<OrgChartResponse>>();
         var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-        okResult.Value.Should().BeEquivalentTo(expectedResponse);
+        var response = okResult.Value.Should().BeOfType<OrgChartResponse>().Subject;
+        response.Organization.Should().BeEquivalentTo(expectedResponse.Organization);
     }
 
     [Fact]
@@ -119,10 +120,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var exceptionMessage = "Service error";
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("true");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("true");
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(exceptionMessage));
 
@@ -133,9 +132,6 @@ public class OrgChartControllerTests
         result.Result.Should().BeOfType<ObjectResult>();
         var objectResult = result.Result.Should().BeOfType<ObjectResult>().Subject;
         objectResult.StatusCode.Should().Be(StatusCodes.Status500InternalServerError);
-        
-        var errorResponse = objectResult.Value.Should().BeAssignableTo<object>().Subject;
-        var errorDict = errorResponse.Should().BeAssignableTo<object>().Subject;
     }
 
     [Fact]
@@ -143,10 +139,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("true");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("true");
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -169,10 +163,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var exception = new InvalidOperationException("Service error");
-        var mockConfigSection = new Mock<IConfigurationSection>();
-        mockConfigSection.Setup(s => s.Value).Returns("true");
-        _mockConfiguration.Setup(c => c.GetSection("UseMockAuth")).Returns(mockConfigSection.Object);
-        _mockConfiguration.Setup(c => c["UseMockAuth"]).Returns("true");
+        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
+            .Returns(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 

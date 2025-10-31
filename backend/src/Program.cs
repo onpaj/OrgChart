@@ -3,6 +3,7 @@ using OrgChart.API.Configuration;
 using OrgChart.API.DataSources;
 using OrgChart.API.Repositories;
 using OrgChart.API.Extensions;
+using OrgChart.API.Authorization;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,8 +47,23 @@ switch (dataSourceType.ToLower())
         break;
 }
 
-// Register the service
+// Register the services
 builder.Services.AddScoped<IOrgChartService, OrgChartService>();
+
+// Register permission service based on authentication mode
+var useMockAuth = builder.Configuration.GetValue<bool>("UseMockAuth", false);
+if (useMockAuth)
+{
+    builder.Services.AddScoped<IUserPermissionService, MockUserPermissionService>();
+    builder.Services.AddScoped<IAuthorizationHandler, MockOrgChartAuthorizationHandler>();
+}
+else
+{
+    builder.Services.AddScoped<IUserPermissionService, RoleBaseUserPermissionService>();
+    builder.Services.AddScoped<IAuthorizationHandler, OrgChartAuthorizationHandler>();
+}
+
+// Register authorization handler
 
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -75,12 +91,13 @@ builder.Services.AddAuthorization(options =>
     // Don't set FallbackPolicy - let individual controllers/actions decide
     // This allows [AllowAnonymous] to work properly
         
-    // Role-based policies
-    options.AddPolicy("OrgChartReader", policy => 
-        policy.RequireClaim("scp", "access_as_user"));
+    // Policy for reading org chart data
+    options.AddPolicy(OrgChartPolicies.Read, policy => 
+        policy.Requirements.Add(new OrgChartRequirement(OrgChartAccessLevel.Read)));
         
-    options.AddPolicy("OrgChartWriter", policy => 
-        policy.RequireClaim("scp", "OrgChart_Admin"));
+    // Policy for editing org chart data - requires admin role
+    options.AddPolicy(OrgChartPolicies.Write, policy => 
+        policy.Requirements.Add(new OrgChartRequirement(OrgChartAccessLevel.Write)));
 });
 
 var app = builder.Build();
