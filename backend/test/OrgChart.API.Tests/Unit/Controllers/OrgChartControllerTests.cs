@@ -34,8 +34,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(true);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -54,8 +54,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(false);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(false);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
         
@@ -87,8 +87,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(true);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -120,8 +120,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var exceptionMessage = "Service error";
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(true);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(exceptionMessage));
 
@@ -139,8 +139,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var expectedResponse = CreateSampleOrgChartResponse();
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(true);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
@@ -163,8 +163,8 @@ public class OrgChartControllerTests
     {
         // Arrange
         var exception = new InvalidOperationException("Service error");
-        _mockPermissionService.Setup(s => s.CanEdit(It.IsAny<ClaimsPrincipal>()))
-            .Returns(true);
+        _mockPermissionService.Setup(s => s.CanEditAsync(It.IsAny<ClaimsPrincipal>()))
+            .ReturnsAsync(true);
         _mockOrgChartService.Setup(s => s.GetOrganizationStructureAsync(It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 

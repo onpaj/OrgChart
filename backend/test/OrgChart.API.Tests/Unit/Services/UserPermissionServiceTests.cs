@@ -1,130 +1,148 @@
 using FluentAssertions;
-using OrgChart.API.Authorization;
+using Microsoft.AspNetCore.Http;
+using Moq;
 using OrgChart.API.Services;
 using System.Security.Claims;
 
 namespace OrgChart.API.Tests.Unit.Services;
 
-public class RoleBaseUserPermissionServiceTests
+public class HebloUserPermissionServiceTests
 {
-    private readonly RoleBaseUserPermissionService _service;
+    private const string ObjectId = "user-oid";
+    private const string Token = "user-token";
 
-    public RoleBaseUserPermissionServiceTests()
+    private readonly Mock<IHebloPermissionClient> _client = new();
+    private readonly DefaultHttpContext _httpContext = new();
+    private readonly HebloUserPermissionService _service;
+
+    public HebloUserPermissionServiceTests()
     {
-        _service = new RoleBaseUserPermissionService();
+        _httpContext.Request.Headers.Authorization = $"Bearer {Token}";
+        var accessor = new Mock<IHttpContextAccessor>();
+        accessor.Setup(a => a.HttpContext).Returns(_httpContext);
+        _service = new HebloUserPermissionService(_client.Object, accessor.Object);
     }
 
-    [Fact]
-    public void CanEdit_WhenUserIsNull_ShouldReturnFalse()
+    private static ClaimsPrincipal AuthenticatedUser(string? objectId = ObjectId)
     {
-        // Act
-        var result = _service.CanEdit(null);
-
-        // Assert
-        result.Should().BeFalse();
+        var claims = objectId is null ? Array.Empty<Claim>() : new[] { new Claim("oid", objectId) };
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 
-    [Fact]
-    public void CanEdit_WhenUserIsNotAuthenticated_ShouldReturnFalse()
-    {
-        // Arrange
-        var identity = new ClaimsIdentity();
-        var user = new ClaimsPrincipal(identity);
-
-        // Act
-        var result = _service.CanEdit(user);
-
-        // Assert
-        result.Should().BeFalse();
-    }
+    private void GivenHebloReturns(bool isSuperUser, params string[] permissions) =>
+        _client.Setup(c => c.GetPermissionsAsync(ObjectId, Token, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HebloPermissions(isSuperUser, permissions));
 
     [Fact]
-    public void CanEdit_WhenUserIsAuthenticatedButDoesNotHaveAdminRole_ShouldReturnFalse()
+    public async Task CanReadAsync_WithReadPermission_ReturnsTrue()
     {
-        // Arrange
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(ClaimTypes.Role, "User")
-        };
-        var identity = new ClaimsIdentity(claims, "Test");
-        var user = new ClaimsPrincipal(identity);
+        GivenHebloReturns(false, HebloPermissionNames.OrgChartRead);
 
-        // Act
-        var result = _service.CanEdit(user);
+        var result = await _service.CanReadAsync(AuthenticatedUser());
 
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public void CanEdit_WhenUserIsAuthenticatedAndHasAdminRole_ShouldReturnTrue()
-    {
-        // Arrange
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, "user-id"),
-            new Claim(ClaimTypes.Role, OrgChartClaims.Roles.Admin)
-        };
-        var identity = new ClaimsIdentity(claims, "Test");
-        var user = new ClaimsPrincipal(identity);
-
-        // Act
-        var result = _service.CanEdit(user);
-
-        // Assert
         result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanReadAsync_WithoutReadPermission_ReturnsFalse()
+    {
+        GivenHebloReturns(false, "products.catalog.read");
+
+        var result = await _service.CanReadAsync(AuthenticatedUser());
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CanEditAsync_WithWritePermission_ReturnsTrue()
+    {
+        GivenHebloReturns(false, HebloPermissionNames.OrgChartRead, HebloPermissionNames.OrgChartWrite);
+
+        var result = await _service.CanEditAsync(AuthenticatedUser());
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanEditAsync_WithOnlyReadPermission_ReturnsFalse()
+    {
+        GivenHebloReturns(false, HebloPermissionNames.OrgChartRead);
+
+        var result = await _service.CanEditAsync(AuthenticatedUser());
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SuperUser_CanReadAndEditWithoutExplicitPermissions()
+    {
+        GivenHebloReturns(true);
+
+        (await _service.CanReadAsync(AuthenticatedUser())).Should().BeTrue();
+        (await _service.CanEditAsync(AuthenticatedUser())).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanEditAsync_WhenUserIsNull_ReturnsFalse()
+    {
+        var result = await _service.CanEditAsync(null);
+
+        result.Should().BeFalse();
+        _client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CanReadAsync_WhenUserNotAuthenticated_ReturnsFalse()
+    {
+        var result = await _service.CanReadAsync(new ClaimsPrincipal(new ClaimsIdentity()));
+
+        result.Should().BeFalse();
+        _client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CanReadAsync_WhenObjectIdMissing_ReturnsFalse()
+    {
+        var result = await _service.CanReadAsync(AuthenticatedUser(objectId: null));
+
+        result.Should().BeFalse();
+        _client.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task CanReadAsync_ReadsMappedObjectIdClaim()
+    {
+        GivenHebloReturns(false, HebloPermissionNames.OrgChartRead);
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", ObjectId),
+        }, "Test"));
+
+        var result = await _service.CanReadAsync(user);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanReadAsync_WhenNoBearerToken_ReturnsFalse()
+    {
+        _httpContext.Request.Headers.Authorization = string.Empty;
+
+        var result = await _service.CanReadAsync(AuthenticatedUser());
+
+        result.Should().BeFalse();
+        _client.VerifyNoOtherCalls();
     }
 }
 
 public class MockUserPermissionServiceTests
 {
-    private readonly MockUserPermissionService _service;
-
-    public MockUserPermissionServiceTests()
-    {
-        _service = new MockUserPermissionService();
-    }
+    private readonly MockUserPermissionService _service = new();
 
     [Fact]
-    public void CanEdit_WhenUserIsNull_ShouldReturnTrue()
+    public async Task MockService_AllowsReadAndEdit()
     {
-        // Act
-        var result = _service.CanEdit(null);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanEdit_WhenUserIsNotAuthenticated_ShouldReturnTrue()
-    {
-        // Arrange
-        var identity = new ClaimsIdentity();
-        var user = new ClaimsPrincipal(identity);
-
-        // Act
-        var result = _service.CanEdit(user);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public void CanEdit_WhenUserIsAuthenticated_ShouldReturnTrue()
-    {
-        // Arrange
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, "user-id")
-        };
-        var identity = new ClaimsIdentity(claims, "Test");
-        var user = new ClaimsPrincipal(identity);
-
-        // Act
-        var result = _service.CanEdit(user);
-
-        // Assert
-        result.Should().BeTrue();
+        (await _service.CanReadAsync(null)).Should().BeTrue();
+        (await _service.CanEditAsync(null)).Should().BeTrue();
     }
 }

@@ -48,7 +48,7 @@ public class OrgChartController : ControllerBase
             // Set permissions based on user's authorization level
             result.Permissions = new UserPermissions 
             { 
-                CanEdit = _permissionService.CanEdit(User) 
+                CanEdit = await _permissionService.CanEditAsync(User)
             };
 
             return Ok(result);
