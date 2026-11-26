@@ -3,14 +3,13 @@ using System.Security.Claims;
 namespace OrgChart.API.Services;
 
 /// <summary>
-/// Service for checking user permissions
+/// Decides what the current user may do with the org chart
 /// </summary>
 public interface IUserPermissionService
 {
-    /// <summary>
-    /// Checks if the current user can edit org chart data
-    /// </summary>
-    /// <param name="user">The user principal</param>
-    /// <returns>True if user can edit, false otherwise</returns>
-    bool CanEdit(ClaimsPrincipal? user);
+    /// <summary>True if the user may view the org chart.</summary>
+    Task<bool> CanReadAsync(ClaimsPrincipal? user);
+
+    /// <summary>True if the user may change the org chart.</summary>
+    Task<bool> CanEditAsync(ClaimsPrincipal? user);
 }

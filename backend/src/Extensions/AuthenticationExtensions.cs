@@ -122,7 +122,6 @@ public class MockAuthenticationHandler : AuthenticationHandler<MockAuthenticatio
             new Claim(ClaimTypes.Email, "mock@orgchart.com"),
             new Claim("oid", "00000000-0000-0000-0000-000000000000"), // Azure AD Object ID
             new Claim("tid", "11111111-1111-1111-1111-111111111111"), // Tenant ID
-            new Claim(ClaimTypes.Role, OrgChartClaims.Roles.Admin), // Admin role claim
         };
         
         var identity = new ClaimsIdentity(claims, "Mock");

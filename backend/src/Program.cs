@@ -67,7 +67,17 @@ if (useMockAuth)
 }
 else
 {
-    builder.Services.AddScoped<IUserPermissionService, RoleBaseUserPermissionService>();
+    // Access comes from Heblo permissions (anela.org_chart.read / .write), read via GET /api/auth/me
+    // on behalf of the signed-in user.
+    builder.Services.AddOptions<HebloOptions>()
+        .Bind(builder.Configuration.GetSection(HebloOptions.SectionName))
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddSingleton<IHebloTokenProvider, HebloTokenProvider>();
+    builder.Services.AddHttpClient<IHebloPermissionClient, HebloPermissionClient>(client =>
+        client.Timeout = TimeSpan.FromSeconds(HebloRequestTimeoutSeconds));
+    builder.Services.AddScoped<IUserPermissionService, HebloUserPermissionService>();
     builder.Services.AddScoped<IAuthorizationHandler, OrgChartAuthorizationHandler>();
 }
 
@@ -103,7 +113,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(OrgChartPolicies.Read, policy => 
         policy.Requirements.Add(new OrgChartRequirement(OrgChartAccessLevel.Read)));
         
-    // Policy for editing org chart data - requires admin role
+    // Policy for editing org chart data - requires Heblo anela.org_chart.write
     options.AddPolicy(OrgChartPolicies.Write, policy => 
         policy.Requirements.Add(new OrgChartRequirement(OrgChartAccessLevel.Write)));
 });
@@ -136,4 +146,7 @@ app.MapFallbackToFile("index.html");
 app.Run();
 
 // Make the implicit Program class public for integration tests
-public partial class Program { }
+public partial class Program
+{
+    private const int HebloRequestTimeoutSeconds = 10;
+}

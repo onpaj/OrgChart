@@ -11,6 +11,8 @@ import {
 } from '../types/orgchart';
 import { getAccessToken } from './auth';
 
+const HTTP_FORBIDDEN = 403;
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 /**
@@ -53,6 +55,12 @@ export class OrgChartApi {
       headers: await this.createHeaders(),
       credentials: 'include',
     });
+
+    if (response.status === HTTP_FORBIDDEN) {
+      throw new Error(
+        'You do not have access to the org chart. Ask a Heblo administrator for the permission anela.org_chart.read.'
+      );
+    }
 
     if (!response.ok) {
       throw new Error(`Failed to fetch organization structure: ${response.status} ${response.statusText}`);

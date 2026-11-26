@@ -75,6 +75,18 @@ describe('OrgChartApi', () => {
       );
     });
 
+    test('should explain missing Heblo permission when access is forbidden', async () => {
+      (fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+      });
+
+      await expect(api.getOrganizationStructure()).rejects.toThrow(
+        'anela.org_chart.read'
+      );
+    });
+
     test('should use correct API endpoint', async () => {
       (fetch as jest.Mock).mockResolvedValueOnce({
         ok: true,

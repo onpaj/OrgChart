@@ -1,40 +1,40 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using OrgChart.API.Services;
 
 namespace OrgChart.API.Authorization;
 
 /// <summary>
-/// Real authorization handler for org chart requirements
+/// Authorization handler for org chart requirements; access comes from Heblo permissions
+/// via <see cref="IUserPermissionService"/>.
 /// </summary>
 public class OrgChartAuthorizationHandler : AuthorizationHandler<OrgChartRequirement>
 {
-    protected override Task HandleRequirementAsync(
+    private readonly IUserPermissionService _permissions;
+
+    public OrgChartAuthorizationHandler(IUserPermissionService permissions)
+    {
+        _permissions = permissions;
+    }
+
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         OrgChartRequirement requirement)
     {
-        // Check if user is authenticated
-        if (context.User.Identity?.IsAuthenticated == false)
+        if (context.User.Identity?.IsAuthenticated != true)
         {
-            return Task.CompletedTask;
+            return;
         }
 
-        // Check access level requirements
-        switch (requirement.AccessLevel)
+        var isAllowed = requirement.AccessLevel switch
         {
-            case OrgChartAccessLevel.Read:
-                // For read access, authenticated user is enough
-                context.Succeed(requirement);
-                break;
+            OrgChartAccessLevel.Read => await _permissions.CanReadAsync(context.User),
+            OrgChartAccessLevel.Write => await _permissions.CanEditAsync(context.User),
+            _ => false,
+        };
 
-            case OrgChartAccessLevel.Write:
-                // For write access, require admin role
-                if (context.User.HasClaim(ClaimTypes.Role, OrgChartClaims.Roles.Admin))
-                {
-                    context.Succeed(requirement);
-                }
-                break;
+        if (isAllowed)
+        {
+            context.Succeed(requirement);
         }
-
-        return Task.CompletedTask;
     }
 }
